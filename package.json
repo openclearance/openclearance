@@ -8,10 +8,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "conformance": "node scripts/conformance.mjs"
   },
   "dependencies": {
     "astro": "^5.13.0",
     "marked": "^15.0.12"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
   }
 }

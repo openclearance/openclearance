@@ -1,0 +1,99 @@
+name: Spec change proposal
+description: Propose a new determination rule, field, clearance facet, vocabulary term, or shape change to the Clearance Manifest.
+title: "[spec] "
+labels: ["spec-change"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a spec change. **Read `GOVERNANCE.md` first** if you haven't: it defines what counts as a patch, minor, or major change and what each requires (use case, public review window, migration story). The fail-closed contract is non-negotiable: a change that could let a non-cleared work present as cleared will not be accepted. The form below covers what the maintainer needs to evaluate the proposal.
+
+        For bug reports (a schema accepts something it shouldn't, prose disagrees with the schema, an example's integrity hash is wrong), use the generic Issue type and skip this template. If the bug could let a non-cleared work present as cleared, or affects integrity or forgery resistance, follow `SECURITY.md` instead and do not open a public issue.
+
+  - type: input
+    id: summary
+    attributes:
+      label: One-sentence summary
+      description: What is the proposed change?
+      placeholder: e.g. Add a `shareAlikeRequired` clearance facet.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: Change type per GOVERNANCE.md
+      options:
+        - "Patch (clarification, non-normative, new recognised rule)"
+        - "Minor (additive, backward-compatible)"
+        - "Major (breaking)"
+        - "Unsure: let the maintainer categorise"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change_target
+    attributes:
+      label: What does this change touch?
+      options:
+        - "A determination rule (rule registry)"
+        - "A payload field"
+        - "A clearance facet"
+        - "A vocabulary term / context mapping"
+        - "The Tier-0 envelope or integrity derivation"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Real implementation use case
+      description: A concrete scenario from your work or a tool you are building. Theoretical completeness is not enough.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: extensions_first
+    attributes:
+      label: Can this live under the `extensions` escape hatch instead?
+      description: The default answer in GOVERNANCE.md is "try extensions first". If the change is producer-specific, a vendor-namespaced extension is the right path. (Determination rules are exempt: the rule registry is open, so a new rule id is already valid without a spec change and only needs a PR to be *recognised*.)
+      options:
+        - "Yes: I will use extensions"
+        - "No: the change is general enough to deserve a core field/facet/rule"
+        - "N/A: this is a new determination rule"
+        - "Unsure: open to guidance"
+    validations:
+      required: true
+
+  - type: textarea
+    id: example_document
+    attributes:
+      label: Example manifest demonstrating the proposed shape
+      description: Paste a minimal payload (or full Tier-0 envelope) that shows the change in context. JSON code block preferred. For a new rule, show it inside a `basis`.
+
+  - type: textarea
+    id: jsonld_mapping
+    attributes:
+      label: JSON-LD mapping notes (if semantic meaning is non-obvious)
+      description: For a new field or term, propose the IRI / mapping in `v0.1/context.jsonld`. Skip if the meaning is clear from the field name.
+
+  - type: textarea
+    id: failclosed
+    attributes:
+      label: Fail-closed analysis
+      description: How does this change behave when the relevant rights signal is missing, ambiguous, or non-affirmative? Confirm it still resolves to a deny in those cases.
+    validations:
+      required: true
+
+  - type: textarea
+    id: backward_compat
+    attributes:
+      label: Backward-compatibility analysis
+      description: How does this affect documents conformant against the current version? Note that any change to the Tier-0 integrity derivation is breaking by definition.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Prior art in adjacent standards (CC, RightsStatements, C2PA, PROV), alternatives considered, open questions.

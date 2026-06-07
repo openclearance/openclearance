@@ -1,0 +1,42 @@
+name: conformance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/v0.1/**"
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "astro.config.mjs"
+      - ".github/workflows/conformance.yml"
+  pull_request:
+    paths:
+      - "public/v0.1/**"
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "astro.config.mjs"
+      - ".github/workflows/conformance.yml"
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run Clearance Manifest v0.1 conformance check
+        run: npm run conformance
+
+      - name: Build the openclearance.org site
+        run: npm run build
