@@ -1,0 +1,7 @@
+# Cloudflare Pages project for openclearance.org (static Astro build).
+# Deploy is driven by .github/workflows/deploy.yml (GitHub Actions + pinned
+# wrangler + an account-scoped API token), NOT Cloudflare's native git
+# integration. `pages_build_output_dir` lets `wrangler pages deploy` find the
+# build without extra flags.
+name = "openclearance"
+pages_build_output_dir = "dist"

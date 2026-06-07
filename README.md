@@ -17,7 +17,7 @@ public home of the spec; the working draft of the spec itself lives in the
 
 - `/` : overview, what openclearance is and why it exists.
 - `/principles` : design principles, compose don't reinvent.
-- `/v0.1/` : spec landing. **Placeholder.** See the note below.
+- `/v0.1/` : the v0.1 specification, including the prose, the rule registry, the vocabulary, and the machine artifacts (schemas, JSON-LD context, examples).
 
 ## Build
 
@@ -31,30 +31,32 @@ npm run preview    # preview the production build
 `npm run build` must succeed before deploy. The site is fully static; the deploy
 target (Cloudflare Pages) and DNS are configured separately.
 
-## Spec wiring (TODO after the byte-exact merge)
+## Spec source and parity
 
-The `/v0.1/` route is a deliberate placeholder. It does **not** yet serve the
-real spec artifacts, and no spec content is fabricated.
+The `/v0.1/` route serves the published specification: the prose (rendered from
+`src/spec-prose/v0.1/`), the rule registry, the vocabulary, and the
+machine-readable artifacts under `public/v0.1/`.
 
-Once the byte-exact Tier-0 rewrite (open-museum-mcp PR #68) merges and the
-artifacts are final, wire the files from `open-museum-mcp/spec/clearance/v0.1/`
-to permanent paths under `/v0.1/`:
+The authoritative source of the spec is the
+[open-museum-mcp](https://github.com/cfpramod/open-museum-mcp) engine's
+`spec/clearance/v0.1/`. This repo vendors those files byte-identically so the
+spec resolves from its canonical home. Served paths:
 
-| Source (in open-museum-mcp)              | Permanent path                          |
-| ---------------------------------------- | --------------------------------------- |
-| `context.jsonld`                         | `/v0.1/context.jsonld`                  |
-| `clearance-manifest.schema.json`         | `/v0.1/clearance-manifest.schema.json`  |
-| `tier0-envelope.schema.json`             | `/v0.1/tier0-envelope.schema.json`      |
-| `advisory-entry.schema.json`             | `/v0.1/advisory-entry.schema.json`      |
-| `rules.md`                               | `/v0.1/rules`                           |
-| `spec.md`                                | `/v0.1/spec`                            |
-| `examples/`                              | `/v0.1/examples/`                       |
+| Artifact                | Path                                   |
+| ----------------------- | -------------------------------------- |
+| JSON-LD context         | `/v0.1/context.jsonld`                 |
+| Manifest schema         | `/v0.1/clearance-manifest.schema.json` |
+| Tier-0 envelope schema  | `/v0.1/tier0-envelope.schema.json`     |
+| Advisory-entry schema   | `/v0.1/advisory-entry.schema.json`     |
+| Rule registry           | `/v0.1/rules`                          |
+| Specification prose     | `/v0.1/spec`                           |
+| Conformance examples    | `/v0.1/examples/`                      |
 
 The `@context` IRI `https://openclearance.org/v0.1/context.jsonld` is the spec's
-sole normative authority for term expansion, so the file at that path must be
-byte-stable once published. Do not publish until the artifacts are frozen.
-Detailed wiring options are commented at the top of
-`src/pages/v0.1/index.astro`.
+sole normative authority for term expansion, so the file at that path is
+byte-stable. `npm run conformance` recomputes the byte-exact Tier-0 integrity
+hashes and validates every published artifact against its schema, and runs in CI
+on every change.
 
 ## Accent colour
 
