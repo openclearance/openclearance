@@ -1,7 +1,7 @@
 The Clearance Manifest specification text and documentation are licensed under
 CC-BY-4.0 (full text below). The machine-readable artifacts under `public/v0.1/`
 (JSON Schemas, the JSON-LD context, and examples) are dedicated to the public
-domain under CC0 1.0 — see `public/v0.1/LICENSE`.
+domain under CC0 1.0; see `public/v0.1/LICENSE`.
 
 Copyright 2026 Pramod Prasanth.
 
