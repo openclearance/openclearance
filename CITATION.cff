@@ -16,7 +16,7 @@ authors:
     given-names: Pramod
 version: "0.1.0"
 date-released: "2026-06-07"
-license: Apache-2.0
+license: CC-BY-4.0
 repository-code: "https://github.com/cfpramod/openclearance"
 url: "https://openclearance.org/"
 keywords:

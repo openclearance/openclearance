@@ -73,4 +73,9 @@ npm run build         # static build to dist/
 
 ## License
 
-By contributing, you agree that your contributions are licensed under the Apache License 2.0 (see [`LICENSE`](LICENSE)). You retain copyright. We do not require a CLA.
+The Clearance Manifest standard uses a dual license, and contributions follow the part of the project they touch:
+
+- **Prose and documentation contributions** (the normative spec text in `src/spec-prose/`, site prose, and all human-readable docs) are licensed under [CC-BY-4.0](LICENSE).
+- **Machine-artifact contributions** (anything under `public/v0.1/`: JSON Schemas, the JSON-LD context, examples) are dedicated to the public domain under [CC0-1.0](public/v0.1/LICENSE).
+
+By contributing, you agree to license your contribution under the license that governs the file you are changing, as described above. You retain copyright. We do not require a CLA.

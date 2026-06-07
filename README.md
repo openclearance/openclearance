@@ -65,6 +65,22 @@ switch to the oxblood/dark-red alternative, change only the `--accent` and
 favicon at `public/favicon.svg` has a matching ink-blue fill to update by hand
 if the accent flips.
 
+## License
+
+The Clearance Manifest standard uses a dual license:
+
+- **Specification text and documentation** (the normative prose in
+  `src/spec-prose/`, the rendered spec pages, this README, and the governance
+  docs) are licensed under [CC-BY-4.0](LICENSE). Attribution anchors the
+  standard's identity.
+- **Machine-readable artifacts** under
+  [`public/v0.1/`](public/v0.1/LICENSE) (the JSON Schemas, the JSON-LD context,
+  and the conformance examples) are dedicated to the public domain under
+  [CC0-1.0](public/v0.1/LICENSE), so implementers can embed them without
+  friction.
+
+Copyright 2026 Pramod Prasanth.
+
 ## Conventions
 
 - Editorial voice, sentence case headings, no em-dashes. `→` is the only special
