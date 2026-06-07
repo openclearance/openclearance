@@ -55,7 +55,7 @@ If you've found a real bug in the spec (a JSON Schema that doesn't match the pro
 ## Local setup
 
 ```
-git clone https://github.com/cfpramod/openclearance
+git clone https://github.com/openclearance/openclearance
 cd openclearance
 npm install
 npm run conformance   # validate the published v0.1 artifacts

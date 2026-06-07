@@ -23,4 +23,4 @@ Initial public release of the Clearance Manifest standard.
 
 The standard is emitted today by the [open-museum-mcp](https://github.com/cfpramod/open-museum-mcp) engine.
 
-[v0.1.0]: https://github.com/cfpramod/openclearance/releases/tag/v0.1.0
+[v0.1.0]: https://github.com/openclearance/openclearance/releases/tag/v0.1.0

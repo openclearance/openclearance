@@ -17,7 +17,7 @@ authors:
 version: "0.1.0"
 date-released: "2026-06-07"
 license: CC-BY-4.0
-repository-code: "https://github.com/cfpramod/openclearance"
+repository-code: "https://github.com/openclearance/openclearance"
 url: "https://openclearance.org/"
 keywords:
   - rights clearance

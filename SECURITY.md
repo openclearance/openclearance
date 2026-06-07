@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately via [GitHub Security Advisories](https://github.com/cfpramod/openclearance/security/advisories/new). Do not open a public issue. If you cannot use GitHub Security Advisories, email **contact@openclearance.org** with "openclearance security" in the subject.
+Please report suspected vulnerabilities privately via [GitHub Security Advisories](https://github.com/openclearance/openclearance/security/advisories/new). Do not open a public issue. If you cannot use GitHub Security Advisories, email **contact@openclearance.org** with "openclearance security" in the subject.
 
 You can expect an acknowledgement within 7 days. Confirmed issues will be patched on the latest v0.x release line; older lines are not maintained.
 
