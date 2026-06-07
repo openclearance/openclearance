@@ -1,7 +1,7 @@
 # Support
 
-Thanks for your interest in the Clearance Manifest standard. Here is where to go
-for each kind of question.
+This page routes each kind of question about the Clearance Manifest standard to
+the right place.
 
 ## Where to go
 

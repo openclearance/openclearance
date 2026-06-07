@@ -5,10 +5,10 @@ standard is published at [openclearance.org](https://openclearance.org/).
 
 ## Current state
 
-The Clearance Manifest has released v0.1, permanently published and frozen. The
-standard is currently maintained by Pramod Prasanth as the initial steward. How
-governance should broaden as adoption grows is deliberately an open question,
-addressed in the next section.
+The Clearance Manifest has released v0.1, permanently published and frozen.
+Pramod Prasanth maintains the standard as its initial steward. How governance
+should broaden as adoption grows is deliberately an open question, addressed in
+the next section.
 
 ## Open question: long-term governance model
 
@@ -26,7 +26,7 @@ Candidate models under consideration:
   for extensions, profiles, and additions to the rule registry and vocabulary.
   Brings a structured contribution and review process while staying
   implementer-driven.
-- **Formal standards body.** Submit the standard for formal standardization.
+- **Formal standards body.** Submit the standard for formal standardisation.
   Maximum durability and weight; slower, more procedural, and less nimble for
   additive change.
 - **Independent consortium or foundation.** A neutral multi-stakeholder body
@@ -35,7 +35,7 @@ Candidate models under consideration:
   requires a critical mass of committed members to stand up.
 
 These models are not mutually exclusive over time: a common trajectory is
-maintainer-stewarded, then managed community, then formal standardization as
+maintainer-stewarded, then managed community, then formal standardisation as
 adoption deepens.
 
 **We invite input from anyone with a stake in how rights-clearance evidence is

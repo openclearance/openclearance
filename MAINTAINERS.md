@@ -1,6 +1,6 @@
 # Maintainers
 
-The Clearance Manifest standard is currently maintained by its initial author.
+The Clearance Manifest standard is maintained by its initial author.
 How the standard should be governed for the long term is deliberately an open
 question (maintainer-stewarded now, with managed-community, formal-standards-body,
 and independent-consortium models all on the table); see the open-governance
