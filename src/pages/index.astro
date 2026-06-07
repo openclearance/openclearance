@@ -1,0 +1,153 @@
+---
+import Base from '../layouts/Base.astro';
+
+const landscape = [
+  {
+    layer: 'Rights status',
+    carrier:
+      'Creative Commons (CC0, CC BY…) and the Public Domain Mark; RightsStatements.org (In Copyright, No Known Copyright…) for what CC does not cover',
+  },
+  {
+    layer: 'Description + provenance',
+    carrier: 'schema.org CreativeWork and Dublin Core: who made it, when, where it lives',
+  },
+  {
+    layer: 'Determination provenance',
+    carrier: 'W3C PROV: who decided the status, when, on what evidence',
+  },
+  {
+    layer: 'Content authenticity',
+    carrier: 'C2PA: tamper-evident, signed provenance that travels with the file',
+  },
+  {
+    layer: 'Institutional terms',
+    carrier: "each museum's bespoke terms-of-use page, often qualifying the licence in prose",
+  },
+  {
+    layer: 'Certificates of authenticity',
+    carrier: "the art world's existing trust documents, built for objects, not reuse",
+  },
+];
+
+const facets = [
+  { label: 'Commercial reproduction', verdict: 'yes / no' },
+  { label: 'Derivatives', verdict: 'yes / no' },
+  { label: 'Attribution required', verdict: 'yes / no' },
+];
+---
+
+<Base
+  title="openclearance: a portable rights-clearance standard for creative works"
+  description="The Clearance Manifest is a portable, validatable rights-clearance artifact that travels with a work. Fail-closed, byte-exact Tier-0 integrity, C2PA for signed tiers. It composes existing standards rather than inventing new ones."
+>
+  <section class="wrap hero">
+    <p class="eyebrow">Why we built openclearance</p>
+    <h1>One question, a dozen vocabularies.</h1>
+    <p class="lede">
+      Ask whether you may reuse a museum artwork and the answer arrives in fragments. Is it CC0 or a
+      Public Domain Mark? Does the museum's own terms page qualify the licence? Is there a rights
+      statement, a provenance record, a certificate of authenticity? Each answers a different part of
+      the question, in a different format, and none of them tells you the thing you actually need: may
+      I print this and sell it?
+    </p>
+  </section>
+
+  <section class="wrap">
+    <h2>The landscape we surveyed</h2>
+    <p>
+      Rights and provenance for cultural works live in separate, non-interoperable systems, each
+      solving one layer well.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Layer</th>
+          <th scope="col">What carries it today</th>
+        </tr>
+      </thead>
+      <tbody>
+        {landscape.map((row) => (
+          <tr>
+            <td>{row.layer}</td>
+            <td>{row.carrier}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+
+    <p>
+      Each is good at its layer. None binds them into a single, verifiable answer to "what may I do
+      with this?"
+    </p>
+  </section>
+
+  <section class="wrap">
+    <h2>What openclearance does, and doesn't</h2>
+    <p>
+      The Clearance Manifest adds no new licence and no new rights vocabulary to the pile. It composes
+      the ones that already exist. Through one JSON-LD context it binds Creative Commons and
+      RightsStatements.org (status), schema.org and Dublin Core (description and provenance), and W3C
+      PROV (the determination event), and adds just one original thing: a thin clearance layer that
+      translates "what the rights say" into "what you may do," as binary, auditable answers.
+    </p>
+
+    <ul class="facets">
+      {facets.map((f) => (
+        <li>
+          <span>{f.label}</span>
+          <span class="verdict">{f.verdict}</span>
+        </li>
+      ))}
+    </ul>
+
+    <p>
+      Each answer carries its <strong>basis</strong>: the rule and the input that produced it, so a
+      person or an agent can check the reasoning, not just the verdict.
+    </p>
+
+    <h3>It carries the determination; it does not make the law</h3>
+    <p>
+      An external authority, a museum or an engine, decides; the manifest carries that decision,
+      immutably and auditably, in a tamper-evident envelope aligned to C2PA. A manifest is emitted for
+      cleared and non-cleared works alike: a deny is a valid answer, not an error.
+    </p>
+
+    <blockquote class="callout">
+      Compose, don't reinvent. Everything that already works keeps working; openclearance is the thin
+      layer that makes them answer one question together.
+    </blockquote>
+  </section>
+
+  <section class="wrap">
+    <h2>Integrity that travels with the work</h2>
+    <p>
+      A manifest's integrity is defined over bytes, the way DSSE, JWS, COSE, and C2PA all define it.
+      The default Tier 0 envelope is keyless and byte-exact: it carries the payload as its exact UTF-8
+      JSON string alongside a SHA-256 over those exact bytes, so any consumer can recompute the hash
+      and confirm nothing changed in transit. No signing keys, no canonicalization library, no
+      canonicalization attack surface.
+    </p>
+    <p>
+      Signed tiers build on the same payload. Tiers 1 and 2 carry it as a C2PA assertion and add a
+      signature, which lets the manifest support authenticity claims where a commercial use needs
+      them. The payload is unchanged across tiers; only the envelope around it grows.
+    </p>
+    <p class="muted">
+      The reference engine, <a href="https://github.com/cfpramod/open-museum-mcp">open-museum-mcp</a>,
+      emits Tier 0 today. It is a strict, fail-closed rights gate: any signal that is missing,
+      ambiguous, or not affirmatively permissive resolves to a deny.
+    </p>
+
+    <hr />
+
+    <p>
+      <a href="/v0.1">Read the v0.1 spec →</a>
+    </p>
+  </section>
+</Base>
+
+<style>
+  .hero { padding-bottom: 0.5rem; }
+  blockquote.callout { font-style: normal; }
+</style>

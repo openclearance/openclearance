@@ -1,0 +1,28 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="wrap inner">
+    <p class="line">
+      openclearance is an open standard for portable rights clearance.
+      Emitted today by the <a href="https://github.com/cfpramod/open-museum-mcp">open-museum-mcp</a> engine.
+    </p>
+    <p class="line muted">
+      Specification draft v0.1 &middot; namespace <span class="path">https://openclearance.org/v0.1/</span> &middot; {year}
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--rule);
+    margin-top: 5rem;
+    padding: 2.2rem 0 3rem;
+    font-family: var(--sans);
+    font-size: 0.86rem;
+  }
+  .line { max-width: none; margin: 0 0 0.35rem; color: var(--ink-2); }
+  .line:last-child { margin-bottom: 0; }
+  .path { font-size: 0.8rem; }
+</style>

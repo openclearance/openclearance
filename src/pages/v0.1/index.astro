@@ -1,0 +1,127 @@
+---
+import Base from '../../layouts/Base.astro';
+
+/*
+ * ============================================================================
+ * PLACEHOLDER: Clearance Manifest v0.1 spec landing
+ * ============================================================================
+ *
+ * This page is intentionally a shell. The actual spec artifacts are NOT served
+ * here yet, and no spec content is fabricated below.
+ *
+ * TODO (wire AFTER open-museum-mcp PR #68 "byte-exact Tier-0" merges):
+ *
+ *   Source of truth lives in the open-museum-mcp repo at:
+ *     spec/clearance/v0.1/
+ *       ├── context.jsonld                     → serve at /v0.1/context.jsonld
+ *       ├── clearance-manifest.schema.json     → serve at /v0.1/clearance-manifest.schema.json
+ *       ├── tier0-envelope.schema.json         → serve at /v0.1/tier0-envelope.schema.json
+ *       ├── advisory-entry.schema.json         → serve at /v0.1/advisory-entry.schema.json
+ *       ├── rules.md                           → render at /v0.1/rules
+ *       ├── spec.md                            → render at /v0.1/spec (readable HTML)
+ *       └── examples/                          → serve under /v0.1/examples/
+ *
+ *   These are PERMANENT paths: the @context IRI
+ *     https://openclearance.org/v0.1/context.jsonld
+ *   is the spec's sole normative authority for term expansion, so the file at
+ *   that path must be byte-stable once published. Do not publish until the
+ *   byte-exact rewrite has merged and the artifacts are final.
+ *
+ *   Wiring options (decide at wire-time):
+ *     - copy the spec/ artifacts into this site's public/ at build (a small
+ *       sync script in the build, single source of truth stays in the engine repo), OR
+ *     - git submodule / subtree the spec dir, OR
+ *     - render spec.md and rules.md via an Astro Markdown route while serving
+ *       the .jsonld and .json artifacts as static files under public/v0.1/.
+ *
+ *   Correct MIME types matter for the machine artifacts:
+ *     .jsonld → application/ld+json
+ *     .json   → application/json
+ * ============================================================================
+ */
+
+const artifacts = [
+  {
+    path: '/v0.1/context.jsonld',
+    label: 'JSON-LD context',
+    note: 'the sole normative authority for term expansion',
+  },
+  {
+    path: '/v0.1/clearance-manifest.schema.json',
+    label: 'Payload JSON Schema',
+    note: 'the normative shape of the manifest payload',
+  },
+  {
+    path: '/v0.1/tier0-envelope.schema.json',
+    label: 'Tier-0 envelope JSON Schema',
+    note: 'the keyless, byte-exact integrity wrapper',
+  },
+  {
+    path: '/v0.1/spec',
+    label: 'Specification (readable)',
+    note: 'the normative prose document',
+  },
+];
+---
+
+<Base
+  title="Clearance Manifest v0.1 · openclearance"
+  description="The Clearance Manifest v0.1 specification is being finalized. When published, the JSON-LD context, JSON Schemas, and readable spec will be served at permanent paths under /v0.1/."
+>
+  <section class="wrap">
+    <p class="eyebrow">Specification</p>
+    <h1>Clearance Manifest v0.1</h1>
+    <p class="lede">
+      Namespace authority <span class="path">https://openclearance.org/v0.1/</span>. This version is
+      being finalized. When it is published, the artifacts below will be served from this path and
+      held stable, so the context IRI a manifest references never moves.
+    </p>
+
+    <div class="notice" role="status">
+      <p><strong>v0.1 is being finalized.</strong></p>
+      <p>
+        The specification is mid-flight on a byte-exact integrity rewrite. The normative artifacts are
+        not published at these paths yet. They will be wired here, unchanged, once the rewrite is
+        merged in the reference engine. Nothing on this page should be treated as the final spec.
+      </p>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2>What will be served here</h2>
+    <p>
+      Each artifact will live at a permanent path under <span class="path">/v0.1/</span>. The JSON-LD
+      context IRI is the manifest's sole normative authority for term expansion, so once published it
+      is held byte-stable for the life of the version.
+    </p>
+
+    <ul class="facets">
+      {artifacts.map((a) => (
+        <li>
+          <span><span class="path">{a.path}</span> &middot; <span class="muted">{a.note}</span></span>
+          <span class="verdict">soon</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="wrap">
+    <h2>In the meantime</h2>
+    <p>
+      The working draft lives in the reference engine repository at
+      <span class="path">spec/clearance/v0.1/</span> and evolves there until it is frozen and
+      published to these paths.
+    </p>
+    <p>
+      <a href="https://github.com/cfpramod/open-museum-mcp/tree/main/spec/clearance/v0.1">
+        View the working draft in open-museum-mcp →
+      </a>
+    </p>
+
+    <hr />
+
+    <p class="muted">
+      Read the <a href="/principles">design principles</a> for how v0.1 composes existing standards.
+    </p>
+  </section>
+</Base>

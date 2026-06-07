@@ -1,0 +1,220 @@
+/*
+ * openclearance.org global styles
+ * Mood A: archival / institutional-warm. Restrained, document-like.
+ *
+ * ACCENT DECISION (flip in ONE place):
+ * --accent is currently a restrained ink-blue. To switch to oxblood/dark-red,
+ * change ONLY the two --accent lines below. Nothing else references a literal
+ * accent colour anywhere in the codebase.
+ */
+
+:root {
+  /* --- accent: the single point of control ---------------------------- */
+  --accent: #1f3a5f;        /* restrained ink-blue (DEFAULT) */
+  --accent-soft: #1f3a5f1a; /* same hue, ~10% alpha, for rules/washes */
+
+  /* oxblood alternative: uncomment to flip, comment out the two lines above:
+  --accent: #6b2230;
+  --accent-soft: #6b22301a;
+  */
+
+  /* --- institutional-warm neutrals ----------------------------------- */
+  --paper:   #faf8f3;       /* warm off-white ground */
+  --paper-2: #f3efe6;       /* slightly deeper panel ground */
+  --ink:     #1c1a17;       /* near-black warm ink */
+  --ink-2:   #4a463f;       /* secondary text */
+  --ink-3:   #756f64;       /* muted / captions */
+  --rule:    #d9d3c6;       /* hairline rules and borders */
+
+  /* --- type ----------------------------------------------------------- */
+  --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+  --measure: 68ch;          /* readable line length */
+}
+
+* { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* --- layout containers ----------------------------------------------- */
+.wrap {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* --- type scale & hierarchy ------------------------------------------ */
+h1, h2, h3 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 2.9rem);
+  margin: 0 0 0.6rem;
+}
+
+h2 {
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  margin: 3rem 0 0.75rem;
+  padding-top: 0.4rem;
+}
+
+h3 {
+  font-size: 1.12rem;
+  margin: 2rem 0 0.5rem;
+}
+
+p { max-width: var(--measure); margin: 0 0 1.1rem; }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-soft);
+  transition: border-color 0.15s ease;
+}
+a:hover { border-bottom-color: var(--accent); }
+
+strong { font-weight: 600; }
+
+.eyebrow {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.9rem;
+}
+
+.lede {
+  font-size: 1.2rem;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: var(--measure);
+}
+
+.muted { color: var(--ink-3); }
+
+/* --- code & paths ---------------------------------------------------- */
+code, kbd, .path {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.08em 0.36em;
+}
+
+pre {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  margin: 1.4rem 0;
+}
+pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+/* --- tables (the "what carries it" landscape) ------------------------ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  margin: 1.6rem 0;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--rule);
+}
+thead th {
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 2px solid var(--ink-2);
+}
+td:first-child { font-weight: 600; white-space: nowrap; color: var(--ink); }
+
+/* --- pull-quote / principle callout ---------------------------------- */
+.callout {
+  font-family: var(--sans);
+  font-size: 1.12rem;
+  line-height: 1.5;
+  color: var(--ink);
+  border-left: 3px solid var(--accent);
+  padding: 0.4rem 0 0.4rem 1.2rem;
+  margin: 2rem 0;
+  max-width: var(--measure);
+}
+
+/* --- clearance facet list (yes/no answers) --------------------------- */
+.facets {
+  list-style: none;
+  padding: 0;
+  margin: 1.4rem 0;
+  font-family: var(--sans);
+  max-width: var(--measure);
+}
+.facets li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.96rem;
+}
+.facets .verdict { color: var(--ink-3); font-variant: small-caps; letter-spacing: 0.04em; }
+
+/* --- notice / placeholder banner ------------------------------------- */
+.notice {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  background: var(--accent-soft);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 1rem 1.2rem;
+  margin: 1.6rem 0;
+  max-width: var(--measure);
+}
+.notice p { margin: 0; max-width: none; }
+.notice p + p { margin-top: 0.6rem; }
+
+/* --- horizontal rule ------------------------------------------------- */
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 3rem 0;
+}
+
+/* --- focus visibility ------------------------------------------------ */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

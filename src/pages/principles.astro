@@ -1,0 +1,125 @@
+---
+import Base from '../layouts/Base.astro';
+
+const composed = [
+  {
+    standard: 'SHA-256',
+    role: 'Byte-exact integrity',
+    detail:
+      'The Tier-0 envelope protects the producer’s exact serialized bytes. The integrity hash is the SHA-256 of the UTF-8 bytes of the payload string, as lowercase hex. A consumer hashes those bytes verbatim, compares, and only then parses. No canonicalization step, so no canonicalization attack surface.',
+  },
+  {
+    standard: 'C2PA',
+    role: 'Provenance and signing',
+    detail:
+      'Signed tiers carry the same payload as a C2PA assertion and sign the claim. openclearance aligns with C2PA rather than competing with it, so content-authenticity tooling that already understands C2PA can understand a signed manifest.',
+  },
+  {
+    standard: 'JSON-LD, schema.org, Dublin Core, W3C PROV',
+    role: 'The payload vocabulary',
+    detail:
+      'Descriptive metadata, provenance, and the determination event are expressed in vocabularies that already exist and are widely understood. One JSON-LD context aliases the engine’s plain field names to those IRIs, so consumers that read JSON need no IRI awareness while strict JSON-LD processors get fully resolved terms.',
+  },
+  {
+    standard: 'Creative Commons, RightsStatements.org',
+    role: 'Rights status',
+    detail:
+      'Rights status references the existing public rights vocabularies by URI. v0.1 emits the CC0 and Public Domain Mark URIs; the model accommodates RightsStatements.org URIs for vocabularies a future version may admit.',
+  },
+];
+---
+
+<Base
+  title="Design principles · openclearance"
+  description="openclearance composes existing standards (SHA-256 byte-exact integrity, C2PA for provenance and signing, JSON-LD and schema vocabularies for the payload) rather than inventing new cryptography or a new rights vocabulary."
+>
+  <section class="wrap">
+    <p class="eyebrow">Design principles</p>
+    <h1>Compose, don't reinvent.</h1>
+    <p class="lede">
+      openclearance introduces no new cryptography and no new rights vocabulary. It is a thin layer
+      that makes standards which already work answer one question together. The original contribution
+      is small and deliberate: a clearance layer that translates "what the rights say" into "what you
+      may do," carried in an integrity envelope built from primitives the industry already trusts.
+    </p>
+  </section>
+
+  <section class="wrap">
+    <h2>What it builds on</h2>
+    {composed.map((c) => (
+      <article class="brick">
+        <div class="brick-head">
+          <span class="brick-name">{c.standard}</span>
+          <span class="brick-role">{c.role}</span>
+        </div>
+        <p>{c.detail}</p>
+      </article>
+    ))}
+  </section>
+
+  <section class="wrap">
+    <h2>What stays out of the core</h2>
+    <p>
+      The discipline of the format is in what it refuses to hold. The payload never contains its own
+      hash, its signature, or any commercial data: integrity and attestation live in the transport
+      envelope, and commerce lives in a separate sibling assertion that references the manifest by its
+      content hash. The dependency runs one direction only, commerce toward clearance, never the
+      reverse, so the neutral manifest stays byte-identical to what the engine emitted and remains
+      independently verifiable on its own.
+    </p>
+
+    <blockquote class="callout">
+      Transport over adjudication. This standard defines the shape and transport of a rights
+      assertion so it flows between systems. It does not adjudicate jurisdiction-specific copyright
+      law; an external authority decides, and the manifest carries that decision.
+    </blockquote>
+  </section>
+
+  <section class="wrap">
+    <h2>Fail-closed by design</h2>
+    <p>
+      A determination is only as trustworthy as its default. openclearance is fail-closed: any rights
+      signal that is missing, ambiguous, or not affirmatively permissive resolves to a deny, with
+      every clearance answer false and a basis recording the exact failing value. This supports a
+      conservative posture by construction. A record that should not clear does not quietly present as
+      cleared; a false deny is the tolerable error, not a false clear.
+    </p>
+
+    <hr />
+
+    <p>
+      <a href="/v0.1">Read the v0.1 spec →</a>
+    </p>
+  </section>
+</Base>
+
+<style>
+  .brick {
+    border-top: 1px solid var(--rule);
+    padding: 1.4rem 0;
+    max-width: var(--measure);
+  }
+  .brick-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .brick-name {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .brick-role {
+    font-family: var(--sans);
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .brick p { margin: 0; }
+  blockquote.callout { font-style: normal; }
+</style>
