@@ -1,0 +1,177 @@
+---
+import Base from '../../layouts/Base.astro';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+/*
+ * The v0.1 vocabulary, derived from the served context.jsonld term map.
+ *
+ * The @vocab namespace is https://openclearance.org/v0.1/vocab# so an
+ * openclearance term resolves as a fragment under this page, e.g.
+ *   https://openclearance.org/v0.1/vocab#clearance
+ * Every term in the context gets an id= anchor; oc: terms are the ones this
+ * standard defines, the rest are aliases onto existing vocabularies.
+ */
+
+const ctxRaw = readFileSync(
+  join(process.cwd(), 'public/v0.1/context.jsonld'),
+  'utf8',
+);
+const ctx = JSON.parse(ctxRaw)['@context'] as Record<string, unknown>;
+
+const PREFIX_KEYS = new Set(['oc', 'schema', 'dcterms', 'prov', 'rdf', 'xsd']);
+const META_KEYS = new Set(['@version', '@vocab']);
+
+// Resolve a term's mapping to a human-readable expansion IRI and a source label.
+function describe(value: unknown): { expansion: string; nested: string[] } {
+  if (typeof value === 'string') {
+    return { expansion: value, nested: [] };
+  }
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const id = typeof obj['@id'] === 'string' ? (obj['@id'] as string) : '';
+    const valueType =
+      typeof obj['@type'] === 'string' ? (obj['@type'] as string) : '';
+    const nested: string[] = [];
+    if (obj['@context'] && typeof obj['@context'] === 'object') {
+      for (const k of Object.keys(obj['@context'] as Record<string, unknown>)) {
+        nested.push(k);
+      }
+    }
+    const expansion = valueType ? `${id} (${valueType})` : id;
+    return { expansion, nested };
+  }
+  return { expansion: String(value), nested: [] };
+}
+
+const terms = Object.entries(ctx)
+  .filter(([k]) => !META_KEYS.has(k) && !PREFIX_KEYS.has(k))
+  .map(([term, value]) => {
+    const { expansion, nested } = describe(value);
+    const isOc = expansion.startsWith('oc:');
+    return { term, expansion, nested, isOc };
+  });
+
+const ocTerms = terms.filter((t) => t.isOc);
+const aliasTerms = terms.filter((t) => !t.isOc);
+
+const prefixes = Object.entries(ctx)
+  .filter(([k]) => PREFIX_KEYS.has(k))
+  .map(([k, v]) => ({ prefix: k, iri: String(v) }));
+---
+
+<Base
+  title="Clearance Manifest v0.1 vocabulary · openclearance"
+  description="The v0.1 vocabulary: the term map from the JSON-LD context. The oc: terms are what openclearance defines; the rest alias schema.org, Dublin Core, and W3C PROV. Each term resolves as a fragment under /v0.1/vocab."
+>
+  <section class="wrap">
+    <p class="eyebrow">Specification &middot; v0.1</p>
+    <h1>Vocabulary</h1>
+    <p class="lede">
+      The terms a manifest uses, drawn from the
+      <a href="/v0.1/context.jsonld">JSON-LD context</a>. The <span class="path">oc:</span> terms are
+      the ones this standard defines under the
+      <span class="path">https://openclearance.org/v0.1/vocab#</span> namespace. The rest are aliases
+      onto vocabularies that already exist. Each term resolves as a fragment, for example
+      <span class="path">/v0.1/vocab#clearance</span>.
+    </p>
+  </section>
+
+  <section class="wrap">
+    <h2 id="openclearance-terms">openclearance terms</h2>
+    <p>
+      Defined by this standard. Each resolves under the <span class="path">oc:</span> namespace, which
+      is the <span class="path">@vocab</span> default for a manifest.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Term</th>
+          <th scope="col">Expands to</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ocTerms.map((t) => (
+          <tr>
+            <td id={t.term}><code>{t.term}</code></td>
+            <td>
+              <span class="path">{t.expansion}</span>
+              {t.nested.length > 0 && (
+                <span class="muted"> &middot; nested: {t.nested.join(', ')}</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="wrap">
+    <h2 id="aliased-terms">Aliased terms</h2>
+    <p>
+      Plain field names a manifest carries, aliased onto schema.org, Dublin Core, RDF, and W3C PROV so
+      consumers that read JSON need no IRI awareness while strict JSON-LD processors get fully resolved
+      terms.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Term</th>
+          <th scope="col">Expands to</th>
+        </tr>
+      </thead>
+      <tbody>
+        {aliasTerms.map((t) => (
+          <tr>
+            <td id={t.term}><code>{t.term}</code></td>
+            <td>
+              <span class="path">{t.expansion}</span>
+              {t.nested.length > 0 && (
+                <span class="muted"> &middot; nested: {t.nested.join(', ')}</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="wrap">
+    <h2 id="namespace-prefixes">Namespace prefixes</h2>
+    <p>The prefixes the context binds.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Prefix</th>
+          <th scope="col">Namespace</th>
+        </tr>
+      </thead>
+      <tbody>
+        {prefixes.map((p) => (
+          <tr>
+            <td><code>{p.prefix}</code></td>
+            <td><span class="path">{p.iri}</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+
+    <hr />
+
+    <p class="muted">
+      Back to the <a href="/v0.1/">specification</a> or the <a href="/v0.1/rules">rule registry</a>.
+    </p>
+  </section>
+</Base>
+
+<style>
+  td:target {
+    background: var(--accent-soft);
+    box-shadow: -3px 0 0 0 var(--accent);
+  }
+  td:first-child { white-space: nowrap; }
+  .path { word-break: break-all; }
+</style>

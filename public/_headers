@@ -1,0 +1,18 @@
+# Cloudflare Pages headers.
+# Machine artifacts under /v0.1/ are canonical dereference targets for emitted
+# manifests and JSON-LD processors. Serve them with correct media types.
+
+/v0.1/context.jsonld
+  Content-Type: application/ld+json
+
+/v0.1/clearance-manifest.schema.json
+  Content-Type: application/schema+json
+
+/v0.1/tier0-envelope.schema.json
+  Content-Type: application/schema+json
+
+/v0.1/advisory-entry.schema.json
+  Content-Type: application/schema+json
+
+/v0.1/examples/*.json
+  Content-Type: application/json

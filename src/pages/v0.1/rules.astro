@@ -1,0 +1,98 @@
+---
+import Base from '../../layouts/Base.astro';
+import { marked } from 'marked';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+/*
+ * The v0.1 rule registry, rendered from the vendored rules.md.
+ *
+ * Each rule id resolves as a fragment under this page's URL, e.g.
+ *   https://openclearance.org/v0.1/rules#cc0-grants-commercial
+ * so the first table cell carrying each rule id gets an id= anchor and the
+ * fragment lands on that row.
+ */
+
+const rulesMd = readFileSync(
+  join(process.cwd(), 'src/spec-prose/v0.1/rules.md'),
+  'utf8',
+);
+
+function rewriteLinks(md: string): string {
+  return md
+    .replace(/\]\(spec\.md\)/g, '](/v0.1/)')
+    .replace(/\]\(rules\.md\)/g, '](/v0.1/rules)')
+    .replace(/\]\(context\.jsonld\)/g, '](/v0.1/context.jsonld)')
+    .replace(
+      /\]\(\.\.\/VERSIONING\.md\)/g,
+      '](https://github.com/cfpramod/open-museum-mcp/blob/main/spec/clearance/VERSIONING.md)',
+    );
+}
+
+// The frozen v0.1 rule ids. Their meanings are anchored here.
+const RULE_IDS = [
+  'cc0-grants-commercial',
+  'cc0-grants-derivatives',
+  'cc0-waives-attribution',
+  'pd-grants-commercial',
+  'pd-grants-derivatives',
+  'pd-waives-attribution',
+  'default-deny',
+];
+
+marked.setOptions({ gfm: true });
+let rulesHtml = marked.parse(rewriteLinks(rulesMd)) as string;
+
+// Add a fragment anchor to the first table cell that holds each rule id, so
+// .../rules#<rule-id> jumps to the row defining that rule.
+for (const id of RULE_IDS) {
+  // Match the first `<td>` whose content begins with the rule id in <code>.
+  const cell = `<td><code>${id}</code>`;
+  const idx = rulesHtml.indexOf(cell);
+  if (idx !== -1) {
+    rulesHtml =
+      rulesHtml.slice(0, idx) +
+      `<td id="${id}"><code>${id}</code>` +
+      rulesHtml.slice(idx + cell.length);
+  }
+}
+---
+
+<Base
+  title="Clearance Manifest v0.1 rule registry · openclearance"
+  description="The v0.1 baseline of recognised determination rules for the basis.rule field. Non-normative and conservative: the CC0 and Public Domain truth tables plus the fail-closed default. Each rule id resolves as a fragment under /v0.1/rules."
+>
+  <section class="wrap">
+    <p class="eyebrow">Specification &middot; v0.1</p>
+
+    <div class="spec-body" set:html={rulesHtml} />
+
+    <hr />
+
+    <p class="muted">
+      Back to the <a href="/v0.1/">specification</a> or the <a href="/v0.1/vocab">vocabulary</a>.
+    </p>
+  </section>
+</Base>
+
+<style>
+  .spec-body :global(h1) { margin-top: 0; }
+  .spec-body :global(ul), .spec-body :global(ol) {
+    max-width: var(--measure);
+    padding-left: 1.4rem;
+  }
+  .spec-body :global(li) { margin: 0.35rem 0; }
+  .spec-body :global(td:first-child) { white-space: nowrap; }
+  /* Highlight a row when navigated to by fragment. */
+  .spec-body :global(td:target) {
+    background: var(--accent-soft);
+    box-shadow: -3px 0 0 0 var(--accent);
+  }
+  .spec-body :global(blockquote) {
+    border-left: 3px solid var(--accent);
+    margin: 1.4rem 0;
+    padding: 0.2rem 0 0.2rem 1.2rem;
+    color: var(--ink-2);
+    max-width: var(--measure);
+  }
+</style>
