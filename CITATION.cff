@@ -10,7 +10,9 @@ abstract: >-
   determination, and an auditable trail of how that determination was reached.
   It composes existing standards (Creative Commons and RightsStatements.org,
   schema.org and Dublin Core, W3C PROV, SHA-256 and C2PA) rather than inventing
-  new cryptography or a new rights vocabulary.
+  new cryptography or a new rights vocabulary. The specification text is licensed
+  CC-BY-4.0; the machine-readable artifacts (JSON Schemas, the JSON-LD context,
+  and examples) are dedicated to the public domain under CC0-1.0.
 authors:
   - family-names: Prasanth
     given-names: Pramod
