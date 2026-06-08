@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+title: "Clearance Manifest"
+message: "If you reference or build on the Clearance Manifest standard, please cite it as below."
+type: software
+abstract: >-
+  An open standard for a portable, fail-closed, byte-exact rights-clearance
+  artifact that travels with a creative work. A Clearance Manifest is a
+  machine-readable JSON-LD document asserting whether one specific work is
+  rights-cleared for reuse, carrying the work's provenance, citation, the rights
+  determination, and an auditable trail of how that determination was reached.
+  It composes existing standards (Creative Commons and RightsStatements.org,
+  schema.org and Dublin Core, W3C PROV, SHA-256 and C2PA) rather than inventing
+  new cryptography or a new rights vocabulary. The specification text is licensed
+  CC-BY-4.0; the machine-readable artifacts (JSON Schemas, the JSON-LD context,
+  and examples) are dedicated to the public domain under CC0-1.0.
+authors:
+  - family-names: Prasanth
+    given-names: Pramod
+version: "0.1.0"
+date-released: "2026-06-07"
+license: CC-BY-4.0
+repository-code: "https://github.com/openclearance/openclearance"
+url: "https://openclearance.org/"
+keywords:
+  - rights clearance
+  - copyright
+  - public domain
+  - cultural heritage
+  - provenance
+  - JSON-LD
+  - JSON Schema
+  - C2PA
+  - content integrity
+  - interoperability
