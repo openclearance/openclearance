@@ -24,26 +24,37 @@ expansion.
 
 ## Permanent, immutable, stable URLs
 
-Every published version is served at a permanent URL and **never changes
-content**:
+Every published version is served at two permanent bases, both of which stay
+live indefinitely:
 
 ```
-https://openclearance.org/v0.1/...
+https://w3id.org/clearance-manifest/v0.1/...   ← canonical (durable; domain-independent)
+https://openclearance.org/v0.1/...              ← original (still served; redirects in place)
 ```
+
+The **canonical** base is the w3id.org namespace. The `$id`s in the JSON Schemas and
+the IRI used in the JSON-LD `@context` array reference the w3id.org base. The
+w3id.org service redirects to `openclearance.org` for content delivery (see
+`docs/w3id-registration.md`). This two-layer approach ensures that if the
+`openclearance.org` domain ever lapses, the canonical identifiers continue to resolve
+by updating only the w3id.org redirect entry — without breaking any emitted manifest
+or validator pinned to the canonical IRI.
+
+The `openclearance.org/v0.1/` paths remain live and are never removed; content at
+those paths never changes. Existing tooling that references the old base continues to
+work.
 
 Once a version is published:
 
 - Its schema `$id`s, JSON-LD context, rule-registry ids, and document shapes are
   **frozen**. We do not edit a published version in place. Corrections and
   additions ship as a new version.
-- Its URLs stay live indefinitely. Breaking a published URL would break every
-  document, validator, and toolchain pinned to it, so we treat it as a trust
+- Its URLs (both bases) stay live indefinitely. Breaking a published URL would break
+  every document, validator, and toolchain pinned to it, so we treat it as a trust
   violation, not a maintenance decision.
 
-This is why the `$id` host was chosen deliberately and fixed before first
-publication: the base cannot move afterward without breaking the immutability
-promise. (The misspelling `clearence.org`, registered first by accident, is kept
-only as a 301 redirect typo-trap and is never a canonical base.)
+(The misspelling `clearence.org`, registered first by accident, is kept only as a
+301 redirect typo-trap and is never a canonical base.)
 
 ## Canonical = latest, with no redirects
 

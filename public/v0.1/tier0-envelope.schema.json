@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://openclearance.org/v0.1/tier0-envelope.schema.json",
+  "$id": "https://w3id.org/clearance-manifest/v0.1/tier0-envelope.schema.json",
   "title": "Clearance Manifest Tier-0 envelope v0.1",
   "description": "The byte-exact, keyless Tier-0 integrity envelope emitted by the clearance_record tool. The manifest payload is carried as its exact UTF-8 JSON string (NOT a nested object), and the integrity hash is SHA-256 over that string's exact bytes. Consumers MUST hash the payload string verbatim, compare, and only THEN JSON.parse it to read; they MUST NOT re-serialize or re-canonicalize. The parsed payload conforms to clearance-manifest.schema.json. Tier 1/2 (C2PA signing) are a separate envelope and out of scope for this schema.",
   "type": "object",

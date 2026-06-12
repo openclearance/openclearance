@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://openclearance.org/v0.1/advisory-entry.schema.json",
+  "$id": "https://w3id.org/clearance-manifest/v0.1/advisory-entry.schema.json",
   "title": "Clearance Manifest AdvisoryEntry v0.1",
   "description": "One element of the advisories[] array a conforming verifier emits alongside the structural pass/fail result. AdvisoryEntry objects are verifier output, not manifest fields: the ClearanceManifest schema intentionally has no advisories property. The separation encodes the design principle that structural validity (schema rejects) is independent of determination-rule recognition (verifier emits a non-fatal advisory).",
   "type": "object",

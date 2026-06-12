@@ -9,11 +9,11 @@ Every rule id is a bare kebab-case token that resolves as a fragment under this 
 permanent URL:
 
 ```
-https://openclearance.org/v0.1/rules#<rule-id>
+https://w3id.org/clearance-manifest/v0.1/rules#<rule-id>
 ```
 
 For example, `cc0-grants-commercial` resolves to
-`https://openclearance.org/v0.1/rules#cc0-grants-commercial`.
+`https://w3id.org/clearance-manifest/v0.1/rules#cc0-grants-commercial`.
 
 ## What is normative and what is not
 

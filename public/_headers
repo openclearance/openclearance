@@ -16,3 +16,6 @@
 
 /v0.1/examples/*.json
   Content-Type: application/json
+
+/v0.1/examples/negative/*.json
+  Content-Type: application/json
