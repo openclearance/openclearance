@@ -46,9 +46,11 @@ Subtype name:         clearance-manifest+json
 Required parameters:  none
 Optional parameters:  none
 Encoding:             as per application/json (UTF-8; binary transfer OK)
-Security considerations: the payload is a signed or hash-protected JSON-LD document;
-  consumers MUST verify integrity before processing.
-Published specification: https://w3id.org/clearance-manifest/v0.1/
+Security considerations: the payload is integrity-protected via SHA-256 over the
+  exact UTF-8 bytes of the payload string; consumers MUST verify the hash before
+  processing. Signature tiers (Tier-1 delegated / Tier-2 direct, via C2PA) are
+  separate envelopes and are not part of the Tier-0 media type.
+Published specification: https://openclearance.org/v0.1/
 Applications: open-access cultural heritage search engines, rights-clearance pipelines
 Fragment identifier considerations: none defined
 Restrictions on usage: none
@@ -78,23 +80,20 @@ available). They are conventionally named `application/vnd.<org>.<type>+json`.
 
 ## Decision
 
-> **Awaiting Pramod's call.**
+**Pramod decided (2026-06-12): vendor tree (`application/vnd.openclearance.manifest+json`) for v0.2; plan standards-tree registration for v1.0.**
 
-| | Option A — standards tree | Option B — vendor tree |
+| | Option A — standards tree | Option B — vendor tree (chosen) |
 |--|--------------------------|------------------------|
 | Type | `application/clearance-manifest+json` | `application/vnd.openclearance.manifest+json` |
 | Registration | IANA formal review (weeks–months) | None required (immediate) |
 | Appropriateness | Best for v1.0+ with multiple adopters | Best for v0.x single-implementation |
-| Schema change needed | No (current type is already this form) | Yes (updates `payloadType` const + examples) |
+| Schema change needed | No (current v0.1 type is already this form) | Yes (v0.2 `payloadType` const + examples) |
 
-**Recommendation:** Use Option B (`vnd.` vendor tree) for v0.1, allowing the spec
-to be honest about its current adoption level. Plan Option A (standards-tree IANA
-registration) for v1.0 after C3 governance is in place and a second independent
-implementation exists.
+The current v0.1 `payloadType` const (`application/clearance-manifest+json`) is **frozen** in
+the published schema and must not be changed in-place. The vendor-tree type takes effect in
+**v0.2**, coordinated with OM-M via OM-OR. At that point:
 
-Once Pramod decides:
-
-- **Option A chosen:** no schema change needed; open an IANA registration request
-  per the template above.
-- **Option B chosen:** update `tier0-envelope.schema.json` `payloadType` const,
-  update all example envelopes, and update the spec prose reference in `spec.md`.
+1. Update `public/v0.2/tier0-envelope.schema.json` `payloadType` const.
+2. Update the v0.2 example envelopes.
+3. Update the spec prose reference in `src/spec-prose/v0.2/spec.md`.
+4. Open an optional IANA vendor-tree registration (no formal review required).

@@ -98,7 +98,7 @@ for (const [key, file] of Object.entries(schemaFiles)) {
   const loaded = readJson(join(v01, file));
   if (!loaded) continue;
   const { json } = loaded;
-  const expectedId = `https://w3id.org/clearance-manifest/v0.1/${file}`;
+  const expectedId = `https://openclearance.org/v0.1/${file}`;
   if (json.$schema !== "https://json-schema.org/draft/2020-12/schema") {
     fail(`${file} must declare the Draft 2020-12 $schema dialect`);
   }
@@ -260,8 +260,8 @@ if (unrec !== undefined) {
 console.log("");
 console.log("JSON-LD expansion");
 
-const CONTEXT_URL = "https://w3id.org/clearance-manifest/v0.1/context.jsonld";
-const VOCAB_BASE = "https://w3id.org/clearance-manifest/v0.1/vocab#";
+const CONTEXT_URL = "https://openclearance.org/v0.1/context.jsonld";
+const VOCAB_BASE = "https://openclearance.org/v0.1/vocab#";
 const ctxDoc = ctxLoaded?.json ?? null;
 
 // Custom document loader — serves context from disk only, never fetches.

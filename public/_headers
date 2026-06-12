@@ -17,5 +17,7 @@
 /v0.1/examples/*.json
   Content-Type: application/json
 
+# CF Pages `*` does not cross path separators, so the rule above does not cover
+# nested paths. Keep this explicit entry for examples/negative/.
 /v0.1/examples/negative/*.json
   Content-Type: application/json

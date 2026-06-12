@@ -1,8 +1,8 @@
 {
   "@context": {
     "@version": 1.1,
-    "@vocab": "https://w3id.org/clearance-manifest/v0.1/vocab#",
-    "oc": "https://w3id.org/clearance-manifest/v0.1/vocab#",
+    "@vocab": "https://openclearance.org/v0.1/vocab#",
+    "oc": "https://openclearance.org/v0.1/vocab#",
     "schema": "https://schema.org/",
     "dcterms": "http://purl.org/dc/terms/",
     "prov": "http://www.w3.org/ns/prov#",

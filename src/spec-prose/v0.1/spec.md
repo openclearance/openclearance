@@ -1,7 +1,7 @@
 # Clearance Manifest v0.1
 
 - **Status:** Draft, published and frozen as v0.1.
-- **Namespace authority:** `https://w3id.org/clearance-manifest/v0.1/`
+- **Namespace authority:** `https://openclearance.org/v0.1/`
 - **Artifact type:** `ClearanceManifest`
 - **This document is normative.** Companion artifacts: the JSON-LD context
   ([`context.jsonld`](context.jsonld)), the payload JSON Schema
@@ -73,7 +73,7 @@ resolved terms.
 
 ### `@context` is the sole normative authority; `specVersion` is convenience
 
-The `@context` array MUST include `https://w3id.org/clearance-manifest/v0.1/context.jsonld`.
+The `@context` array MUST include `https://openclearance.org/v0.1/context.jsonld`.
 That IRI is the **sole normative authority** for term expansion and validation.
 `specVersion` (`"0.1"`) is a human-readable convenience for log-grepping and
 quick inspection; a consumer MUST NOT rely on it for vocabulary resolution.
@@ -101,7 +101,7 @@ Each clearance facet carries a `basis`:
 `rule`, `inputs`, and `summary` are all REQUIRED: honesty-by-architecture. The
 **shape** of `basis` is normative; the set of `rule` ids is **open, not a closed
 enum**. A `rule` id is a bare kebab-case token resolving as a fragment under
-[`rules.md`](rules.md) (`https://w3id.org/clearance-manifest/v0.1/rules#<rule>`). The
+[`rules.md`](rules.md) (`https://openclearance.org/v0.1/rules#<rule>`). The
 registry lists the recognised v0.1 baseline (the CC0/PD truth tables and
 `default-deny`); it is non-normative and grows by PR.
 

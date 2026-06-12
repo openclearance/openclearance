@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://w3id.org/clearance-manifest/v0.1/clearance-manifest.schema.json",
+  "$id": "https://openclearance.org/v0.1/clearance-manifest.schema.json",
   "title": "Clearance Manifest v0.1",
   "description": "A portable, fail-closed rights-clearance artifact for one creative work. The schema validates BOTH an accepted (cleared) and a rejected (deny) manifest: a deny is a valid answer, not an error, so descriptive sub-fields under work/source are optional and the deny path carries only what is recoverable from the rejection. Structural validity is independent of determination-rule recognition: an unrecognised basis.rule is structurally valid and yields a non-fatal 'unrecognised_rule' advisory at verification time, never a schema rejection. The @context URI is the sole normative authority for term expansion; specVersion is human-readable convenience only.",
   "type": "object",
@@ -11,8 +11,8 @@
       "type": "array",
       "minItems": 1,
       "items": { "type": "string" },
-      "contains": { "const": "https://w3id.org/clearance-manifest/v0.1/context.jsonld" },
-      "description": "JSON-LD context. MUST include the clearance-manifest v0.1 context IRI: the sole normative authority for expansion and validation."
+      "contains": { "const": "https://openclearance.org/v0.1/context.jsonld" },
+      "description": "JSON-LD context. MUST include the openclearance v0.1 context IRI: the sole normative authority for expansion and validation."
     },
     "type": { "const": "ClearanceManifest" },
     "specVersion": {
