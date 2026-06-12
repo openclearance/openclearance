@@ -255,7 +255,7 @@ if (unrec !== undefined) {
 // ---------------------------------------------------------------------------
 // 7. JSON-LD expansion round-trip.
 //    Expand a sample manifest using a local (no-network) document loader, then
-//    verify that known terms resolve to the expected w3id.org vocab IRIs.
+//    verify that known terms resolve to the expected openclearance.org vocab IRIs.
 // ---------------------------------------------------------------------------
 console.log("");
 console.log("JSON-LD expansion");
