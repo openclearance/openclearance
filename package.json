@@ -12,7 +12,7 @@
     "conformance": "node scripts/conformance.mjs"
   },
   "dependencies": {
-    "astro": "^5.13.0",
+    "astro": "^6.4.6",
     "marked": "^15.0.12"
   },
   "devDependencies": {
