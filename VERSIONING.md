@@ -45,6 +45,26 @@ publication: the base cannot move afterward without breaking the immutability
 promise. (The misspelling `clearence.org`, registered first by accident, is kept
 only as a 301 redirect typo-trap and is never a canonical base.)
 
+## Persistent-identifier plan (v0.2)
+
+The C2 durability drive documents the plan to register a
+[w3id.org](https://w3id.org) namespace (`https://w3id.org/clearance-manifest/`)
+as a durable, domain-independent redirect layer on top of the
+`openclearance.org` base. The steps and the `.htaccess` content are in
+`docs/w3id-registration.md`.
+
+The **canonical IRI migration** — flipping schema `$id`s and the normative
+`@context` IRI from `openclearance.org/v0.1/` to `w3id.org/clearance-manifest/v0.1/`
+— is scoped as **v0.2**, not v0.1. It requires:
+
+1. w3id.org PR merged and redirect verified (`curl -I`).
+2. Cross-lane coordination with OM-M (the engine's emission must change in lock-step).
+3. A v0.2 schema directory with new `$id`s, and a `contains` constraint that accepts
+   both the old and new context IRI during the transition window.
+
+Until v0.2 ships, `openclearance.org/v0.1/` remains the sole canonical base for all
+v0.1 artifacts.
+
 ## Canonical = latest, with no redirects
 
 - **The documentation defaults to the newest version.** "Read the spec" points at

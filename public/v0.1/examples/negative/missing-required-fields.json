@@ -1,0 +1,9 @@
+{
+  "tier": 0,
+  "payloadType": "application/clearance-manifest+json",
+  "payload": "{\"@context\":[\"https://schema.org/\",\"http://purl.org/dc/terms/\",\"https://openclearance.org/v0.1/context.jsonld\"],\"type\":\"ClearanceManifest\",\"specVersion\":\"0.1\",\"work\":{\"id\":\"test:bad\"},\"source\":{\"museum\":{\"code\":\"test\"}}}",
+  "integrity": {
+    "alg": "sha-256",
+    "hash": "ef7f6ccf5cc553b6516b9ab5b33af347c5d6343b5beb91f829b09bb54bd846de"
+  }
+}
