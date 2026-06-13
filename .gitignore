@@ -16,3 +16,6 @@ npm-debug.log*
 
 # macOS
 .DS_Store
+
+# Fleet-internal session state — never in the public standards repo
+session-states/
