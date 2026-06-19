@@ -133,10 +133,24 @@ const facets = [
       signature, which lets the manifest support authenticity claims where a commercial use needs
       them. The payload is unchanged across tiers; only the envelope around it grows.
     </p>
+    <p>
+      <strong>Tier 1 is now live on <a href="https://open-museum.art">Open Museum</a>.</strong> Its
+      attested works carry a Tier-1 delegated-attestor envelope: the manifest is signed on behalf of
+      the source institution that made the determination, under a <code>did:web:open-museum.art</code>
+      identity, and anyone can verify it. Verification is fail-closed: a tampered or actor-mismatched
+      signature is rejected, never quietly downgraded to an unsigned record. What the signature attests
+      is deliberately narrow: that Open Museum faithfully carried the institution's CC0 or public-domain
+      determination, bound to an accountable identity. It is <em>not</em> an independent re-verification
+      of the rights, and <em>not</em> a claim that a reproduction is original. Works that are not yet
+      attested remain Tier 0 — integrity only.
+    </p>
     <p class="muted">
-      The reference engine, <a href="https://github.com/cfpramod/open-museum-mcp">open-museum-mcp</a>,
-      emits Tier 0 today. It is a strict, fail-closed rights gate: any signal that is missing,
-      ambiguous, or not affirmatively permissive resolves to a deny.
+      The keyless reference engine, <a href="https://github.com/cfpramod/open-museum-mcp">open-museum-mcp</a>,
+      emits Tier 0 and holds no signing keys; the Tier-1 attestation is added by Open Museum's signing
+      service over the same byte-exact payload. The engine remains a strict, fail-closed rights gate: any
+      signal that is missing, ambiguous, or not affirmatively permissive resolves to a deny. The v0.1
+      clearance answer is unchanged — three reuse verdicts (commercial reproduction, derivatives,
+      attribution) over CC0 and public-domain works.
     </p>
 
     <hr />
