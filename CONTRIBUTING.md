@@ -65,6 +65,15 @@ npm run build         # static build to dist/
 
 `npm run build` must succeed before any change ships. `npm run conformance` is the published-artifact gate and runs in CI on every push and pull request that touches the spec artifacts or the check itself.
 
+## Deploying openclearance.org
+
+This is a public repository, so by design it holds **no Cloudflare API token and no GitHub Actions deploy workflow**: a deploy token must never live on a public repo. openclearance.org is published with the operator's own local wrangler auth, not from CI.
+
+- **Manual deploy:** `npm run deploy` (runs `astro build`, then `wrangler pages deploy dist` to the `openclearance` Pages project). It uses your locally installed, `wrangler login`-authenticated wrangler. The Cloudflare token stays on your machine and never touches this repo.
+- **Optional auto-deploy on merge:** if you are the operator who publishes the site, run `sh scripts/install-hooks.sh` once. It installs a committed `post-merge` git hook (`scripts/hooks/post-merge`) that runs `npm run deploy` when your local `main` is updated with site changes, so the flow becomes: merge the PR on GitHub, `git pull` on `main`, the site deploys via your local wrangler auth. The hook is guarded to fire only on `main` and only when site files changed, carries no credentials, and is opt-in (contributors who only build and test never install it).
+
+So the publish flow is: open a PR, get it reviewed and merged, then `git pull` on `main` (or run `npm run deploy`). The CF token never leaves the operator's machine.
+
 ## Code style
 
 - Spec and site prose: editorial, restrained, technical. No marketing language. Do not use em-dashes or en-dashes; use colons, commas, or parentheses instead. `→` is the only special glyph used in copy. Rights language stays non-absolute ("helps establish", "supports"), never an absolute guarantee. Match the existing voice.
