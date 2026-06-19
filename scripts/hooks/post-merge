@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+#
+# openclearance.org token-safe deploy hook (post-merge).
+#
+# Runs after a local merge (the merge step of `git pull`). When the local `main`
+# branch is updated with site changes, it deploys openclearance.org using the
+# OPERATOR'S OWN local wrangler auth. No credentials live in this repo or in this
+# hook: the Cloudflare token is never committed and never touches this public
+# repo. The hook is OPT-IN (installed only by `scripts/install-hooks.sh`), so
+# ordinary contributors who clone, build, and test are never affected.
+#
+# Guards:
+#   1. only on the `main` branch (feature-branch merges/pulls are ignored)
+#   2. only when site-relevant files changed in this merge
+#
+set -eu
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+if [ "$branch" != "main" ]; then
+  exit 0
+fi
+
+# Determine what changed in this merge. ORIG_HEAD is the pre-merge tip.
+if git rev-parse --verify -q ORIG_HEAD >/dev/null 2>&1; then
+  changed=$(git diff --name-only ORIG_HEAD HEAD 2>/dev/null || echo "src/")
+else
+  # Unknown delta on main: deploy to be safe rather than miss an update.
+  changed="src/"
+fi
+
+if ! printf '%s\n' "$changed" | grep -Eq '^(src/|public/|astro\.config\.mjs|package\.json|package-lock\.json)'; then
+  echo "post-merge: main updated but no site files changed, skipping deploy."
+  exit 0
+fi
+
+echo "post-merge: main updated with site changes, deploying openclearance.org (local wrangler auth)."
+npm run deploy

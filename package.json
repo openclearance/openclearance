@@ -9,7 +9,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "conformance": "node scripts/conformance.mjs"
+    "conformance": "node scripts/conformance.mjs",
+    "deploy": "astro build && wrangler pages deploy dist --project-name=openclearance --branch=main --commit-dirty=true"
   },
   "dependencies": {
     "astro": "^5.13.0",
