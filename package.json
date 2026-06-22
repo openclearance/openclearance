@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "astro": "^5.13.0",
-    "marked": "^15.0.12"
+    "marked": "^18.0.5"
   },
   "devDependencies": {
     "ajv": "^8.20.0",
