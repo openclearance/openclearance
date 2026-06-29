@@ -1,0 +1,266 @@
+---
+import Base from '../layouts/Base.astro';
+
+// The canonical, forward-looking roadmap for the Clearance Manifest standard.
+// This is the source of truth other openclearance surfaces cite. Status is
+// stated honestly: "Live" is shipped and verifiable today; "In design" is
+// specified but not yet shipped; "Planned" is direction, not yet specified in
+// detail. Nothing here is a date commitment, and nothing planned is described
+// in the present tense as if it already works.
+
+const STATUS = {
+  live: { label: 'Live', note: 'Shipped and verifiable today.' },
+  design: { label: 'In design', note: 'Specified, not yet shipped.' },
+  planned: { label: 'Planned', note: 'Direction, not yet specified in detail.' },
+};
+
+const tracks = [
+  {
+    name: 'Licence coverage',
+    intro:
+      'Which rights determinations the standard can carry, resolved to the reuse verdicts. Every addition is additive: v0.1 stays frozen and keeps emitting its three verdicts.',
+    items: [
+      {
+        status: 'live',
+        label: 'CC0 and Public Domain Mark',
+        detail:
+          'v0.1 resolves CC0 and the worldwide Public Domain Mark to the three reuse verdicts (commercial reproduction, derivatives, attribution required), each paired with a recorded basis. Fail-closed: any signal that is missing, ambiguous, or not affirmatively permissive denies.',
+      },
+      {
+        status: 'design',
+        label: 'Creative Commons family (CC-BY and variants)',
+        detail:
+          'A v0.2 addition that resolves the CC-BY family by mapping its conditions onto the verdicts (NC to commercial:no, ND to derivatives:no, BY to attribution:yes) plus a shareAlikeRequired facet. Additive to frozen v0.1; designed, not yet published.',
+      },
+      {
+        status: 'planned',
+        label: 'Artist-declared permissions',
+        detail:
+          'A rights-holder declaring permissions for their own work in a standard machine-readable form, beyond the three base verdicts.',
+      },
+      {
+        status: 'planned',
+        label: 'Bespoke and negotiated licences',
+        detail:
+          'Carrying the grant and conditions of an individually negotiated licence as a determination, with the same auditable basis.',
+      },
+    ],
+  },
+  {
+    name: 'Granular permissions',
+    intro:
+      'Finer-grained, declarative controls that sit alongside the base verdicts. Declarative, not enforcing: good-faith tools and platforms respect them; the standard does not claim to stop bad actors. Granular controls can only narrow, never widen, what the base licence already allows.',
+    items: [
+      {
+        status: 'design',
+        label: 'Per-platform use',
+        detail:
+          'Controls scoping reuse to named channels (for example web, a specific social network, press, print), with a small core set and an extension mechanism rather than an enumerated list. A v0.2 axis.',
+      },
+      {
+        status: 'design',
+        label: 'AI-use controls',
+        detail:
+          'Controls over training, extraction, and generation (allow, deny, or conditions), aligned with existing reservation signals such as TDM reservation and C2PA training-and-data-mining assertions. A v0.2 axis.',
+      },
+    ],
+  },
+  {
+    name: 'Integrity tiers',
+    intro:
+      'How much a manifest is cryptographically backed. The payload is identical across tiers; only the envelope around it grows. VerificationState is the single value a consumer checks.',
+    items: [
+      {
+        status: 'live',
+        label: 'Tier-0, keyless integrity',
+        detail:
+          'The default envelope. A byte-exact SHA-256 over the payload string lets any consumer recompute the hash and confirm nothing changed. Integrity, not authenticity. VerificationState UNVERIFIED_SIGNAL.',
+      },
+      {
+        status: 'live',
+        label: 'Tier-1, delegated attestation',
+        detail:
+          'A delegated attestor signs the manifest on behalf of the named, keyless actor, under a did:web identity, carried in a C2PA envelope over the same byte-exact payload. Verification is fail-closed: a tampered or actor-mismatched signature is rejected, never downgraded to an unsigned record. VerificationState ATTESTED_DELEGATE. Live and verifiable on Open Museum; the v0.2 envelope schema is being published here.',
+      },
+      {
+        status: 'planned',
+        label: 'Tier-2, direct attestation',
+        detail:
+          'The determining actor signs with its own domain-bound identity (did:web or X.509), rather than through a delegate. VerificationState ATTESTED_DIRECT.',
+      },
+    ],
+  },
+  {
+    name: 'Governance',
+    intro:
+      'Who may sign, how trust is earned, and how a bad signature stops counting. The model governs identity, not truth: openclearance binds a claim to an accountable identity and records conflicting claims, but never adjudicates which is correct.',
+    items: [
+      {
+        status: 'design',
+        label: 'Accountable signer identities',
+        detail:
+          'Every weighted claim binds to an accountable identity: domain-validated (did:web) or identity-verified (KYC). Restriction and monetisation require a verified identity; the open tier carries only zero-stakes permissive signals.',
+      },
+      {
+        status: 'planned',
+        label: 'Accreditation',
+        detail:
+          'A curated accreditation list gives recognised signers (museums, a coalition body) elevated weight. Opt-in, and it blocks no one: open entry stays the default.',
+      },
+      {
+        status: 'planned',
+        label: 'Revocation and status checking',
+        detail:
+          'An evidence-backed revocation list records signer conduct, and consumers check published signer and claim status (revoked, disputed, withdrawn) the way a CA CRL or OCSP works, so a withdrawn or revoked signature stops clearing.',
+      },
+    ],
+  },
+  {
+    name: 'Distribution and consumption',
+    intro:
+      'How a manifest travels with a work and how a consumer checks it. The honest bar is recovery for registered works, not unstrippable prevention.',
+    items: [
+      {
+        status: 'live',
+        label: 'Embedded C2PA credentials',
+        detail:
+          'For works whose bytes are delivered by the producer, the manifest travels inside the image as a C2PA Content Credential (hard binding). Live for Tier-1 attested works on Open Museum.',
+      },
+      {
+        status: 'planned',
+        label: 'Fingerprint resolve',
+        detail:
+          'For works whose bytes the producer does not control, a perceptual and cryptographic fingerprint resolves an image back to its manifest (soft-binding recovery), so a stripped credential can still be recovered for a registered work.',
+      },
+      {
+        status: 'planned',
+        label: 'Platform upload checks',
+        detail:
+          'A consumption path for platforms to check a work clearance and its declared permissions at upload time.',
+      },
+      {
+        status: 'planned',
+        label: 'Regulatory adoption lever (EU CDSM Article 17, DSA)',
+        detail:
+          'Machine-readable rights and reservation signals offered as an interoperable input to platform obligations under the EU Copyright Directive (CDSM) Article 17 and the Digital Services Act. A direction, not a legal claim.',
+      },
+    ],
+  },
+];
+---
+
+<Base
+  title="Roadmap · openclearance"
+  description="The canonical, forward-looking roadmap for the Clearance Manifest standard: what is live today and what is in design or planned, across licence coverage, granular permissions, integrity tiers, governance, and distribution. Direction, not date commitments."
+>
+  <section class="wrap">
+    <p class="eyebrow">Roadmap</p>
+    <h1>What is live, and what is coming.</h1>
+    <p class="lede">
+      This is the canonical, forward-looking roadmap for the Clearance Manifest standard, and the
+      source of truth other openclearance surfaces cite. It is honest about tense: what is live is
+      live and verifiable today; what is in design or planned is labelled as such and never described
+      as if it already works. Items are direction, not a commitment to dates. v0.1 is frozen, and
+      every addition is additive: new behaviour ships in a new version, never by editing a published
+      one.
+    </p>
+
+    <ul class="legend">
+      {Object.entries(STATUS).map(([key, s]) => (
+        <li>
+          <span class:list={['chip', key]}>{s.label}</span>
+          <span class="legend-note">{s.note}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {tracks.map((track) => (
+    <section class="wrap track">
+      <h2>{track.name}</h2>
+      <p class="track-intro">{track.intro}</p>
+      {track.items.map((item) => (
+        <article class="row">
+          <div class="row-head">
+            <span class="row-label">{item.label}</span>
+            <span class:list={['chip', item.status]}>{STATUS[item.status].label}</span>
+          </div>
+          <p>{item.detail}</p>
+        </article>
+      ))}
+    </section>
+  ))}
+
+  <section class="wrap">
+    <hr />
+    <p class="muted">
+      Sales and partner surfaces restate this roadmap in plainer language, but this page is the
+      authority: if a description elsewhere disagrees with what is marked Live here, this page is
+      correct. For the shipped contract, read the
+      <a href="/v0.1">v0.1 spec</a>.
+    </p>
+  </section>
+</Base>
+
+<style>
+  .legend {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: var(--measure);
+  }
+  .legend li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+  }
+  .legend-note {
+    font-family: var(--sans);
+    font-size: 0.88rem;
+    color: var(--ink-2);
+  }
+  .chip {
+    flex: none;
+    font-family: var(--sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .chip.live { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash, transparent); }
+  .chip.design { color: var(--ink-2); }
+  .chip.planned { color: var(--ink-3); }
+
+  .track { margin-top: 0.5rem; }
+  .track-intro {
+    max-width: var(--measure);
+    color: var(--ink-2);
+  }
+  .row {
+    border-top: 1px solid var(--rule);
+    padding: 1.2rem 0;
+    max-width: var(--measure);
+  }
+  .row-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .row-label {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .row p { margin: 0; }
+</style>
