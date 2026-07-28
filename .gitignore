@@ -16,3 +16,6 @@ npm-debug.log*
 
 # macOS
 .DS_Store
+
+# local coordination notes (never published)
+session-states/
