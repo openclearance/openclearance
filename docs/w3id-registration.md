@@ -1,9 +1,8 @@
 # w3id.org Persistent-ID Registration
 
-> **[DECISION-NEEDED — Pramod]**
-> The w3id.org PR must be submitted from an individual's GitHub account with commit
-> rights to https://github.com/perma-id/w3id.org. The technical steps below are
-> ready; someone with a GitHub account needs to fork the repo and open the PR.
+**Open question:** the w3id.org PR must be submitted from an individual's GitHub
+account with commit rights to https://github.com/perma-id/w3id.org. The technical
+steps below are ready to execute once someone forks the repo and opens the PR.
 
 ## Why w3id.org
 
@@ -22,8 +21,8 @@ only the `.htaccess` entry needs to be updated, not every emitted manifest.
 
 Registering the w3id.org namespace is step one of a two-step process. The full
 canonical-IRI migration (flipping `$id`s, the normative `@context` IRI, and the
-vocab namespace) is scoped as **v0.2** — after the redirect is verified and
-cross-lane coordination with OM-M is complete (see VERSIONING.md). The v0.1
+vocab namespace) is scoped as **v0.2** — after the redirect is verified and the
+reference engine is updated to emit the new IRIs (see VERSIONING.md). The v0.1
 artifacts at `openclearance.org/v0.1/` remain the sole canonical base until then.
 
 When v0.2 ships, the identifier migration will be:
@@ -95,9 +94,6 @@ Once the PR is merged:
 1. Verify the redirect works: `curl -I https://w3id.org/clearance-manifest/v0.1/context.jsonld`
    should return `HTTP/1.1 302` (or 301) pointing to `https://openclearance.org/v0.1/context.jsonld`.
 2. Optionally upgrade the `.htaccess` from `302` to `301`.
-3. Append a resolution line to the escalations log:
-   `YYYY-MM-DDTHH:MMZ  OM-C  [DONE]  w3id.org clearance-manifest namespace merged; redirect verified.`
-4. Route the v0.2 canonical-IRI migration to OM-OR for cross-lane coordination.
 
 ## Immutability promise
 

@@ -58,7 +58,7 @@ The **canonical IRI migration** — flipping schema `$id`s and the normative
 — is scoped as **v0.2**, not v0.1. It requires:
 
 1. w3id.org PR merged and redirect verified (`curl -I`).
-2. Cross-lane coordination with OM-M (the engine's emission must change in lock-step).
+2. The reference engine's emission changing in lock-step with the new IRIs.
 3. A v0.2 schema directory with new `$id`s, and a `contains` constraint that accepts
    both the old and new context IRI during the transition window.
 

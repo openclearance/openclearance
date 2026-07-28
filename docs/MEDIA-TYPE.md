@@ -1,10 +1,9 @@
 # Media-Type Registration
 
-> **[DECISION-NEEDED — Pramod]**
-> The current media type `application/clearance-manifest+json` is unregistered.
-> Two options are analysed below. **Recommendation: register in the vendor tree as
-> `application/vnd.openclearance.manifest+json`** for now, and plan the standards-tree
-> registration for v1.0. See "Decision" at the bottom.
+The current media type `application/clearance-manifest+json` is unregistered.
+Two options are analysed below. **Decided (2026-06-12): register in the vendor tree as
+`application/vnd.openclearance.manifest+json`** for v0.2, with standards-tree
+registration planned for v1.0. See "Decision" at the bottom for the full rationale.
 
 ## Background
 
@@ -91,7 +90,7 @@ available). They are conventionally named `application/vnd.<org>.<type>+json`.
 
 The current v0.1 `payloadType` const (`application/clearance-manifest+json`) is **frozen** in
 the published schema and must not be changed in-place. The vendor-tree type takes effect in
-**v0.2**, coordinated with OM-M via OM-OR. At that point:
+**v0.2**. At that point:
 
 1. Update `public/v0.2/tier0-envelope.schema.json` `payloadType` const.
 2. Update the v0.2 example envelopes.
