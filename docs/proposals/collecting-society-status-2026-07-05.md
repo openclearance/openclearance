@@ -1,11 +1,6 @@
 # Spec addition — Collecting-society status (grant-authority axis)
 
-**Date:** 2026-07-05 · **Author:** OM-C (standard lane) · **Target version:** v0.2 (additive; v0.1 FROZEN)
-**Status:** REVIEW-READY → OM-CR (code/spec gate) → OM-OR sequences into the v0.2 wave → Pramod
-**Feeds:** Pramod's Tuesday collector deck ("every artefact gets an honest manifest") + the standard's roadmap.
-**Coordinate with:** OM-ST (deck) via OM-OR. **Companion (internal, not in this repo):** the bounded ProLitteris
-inquiry email draft — held locally at `session-states/om-c-prolitteris-inquiry-DRAFT-2026-07-05.md` (DO NOT SEND;
-for Pramod). Kept out of this public-repo deliverable deliberately.
+**Date:** 2026-07-05, revised 2026-08-04 · **Target version:** v0.2 (additive; v0.1 FROZEN)
 
 ---
 
@@ -69,7 +64,7 @@ exception). Named `grantAuthority` so a future publisher / estate / gallery-excl
         "assignedCategories": {
           "type": "array",
           "minItems": 1,
-          "description": "THE substantive item: which rights categories the artist assigned to the society. Determines whether a `clearance` facet is the artist's to grant. Open, honesty-bearing set. 'none' = member but nothing relevant assigned (artist retains all); 'unknown' = member, assignment scope not yet confirmed ⇒ fail-closed on reproduction.",
+          "description": "THE substantive item: which rights categories the artist assigned to the society. Determines whether a `clearance` facet is the artist's to grant. Open, honesty-bearing set. 'none' = member but nothing relevant assigned (artist retains all); 'unknown' = member, assignment scope not yet confirmed ⇒ fail-closed on reproduction. 'none' and 'unknown' are SENTINELS, not categories: each MUST be the array's only member when present (enforced below) — a manifest cannot simultaneously claim 'nothing assigned' and name a specific assigned category, or claim both 'nothing assigned' and 'not yet confirmed'.",
           "items": {
             "type": "string",
             "enum": [
@@ -83,26 +78,25 @@ exception). Named `grantAuthority` so a future publisher / estate / gallery-excl
               "none",
               "unknown"
             ]
-          }
+          },
+          "allOf": [
+            { "if": { "contains": { "const": "none" } }, "then": { "maxItems": 1 } },
+            { "if": { "contains": { "const": "unknown" } }, "then": { "maxItems": 1 } }
+          ]
         },
         "verification": {
           "type": "object",
-          "required": ["method", "state"],
+          "required": ["method"],
           "additionalProperties": false,
-          "description": "How the declaration may be checked. MANUAL link-out only — no automated registry call is made or implied (no complete registry API exists; automated name-search yields false negatives, e.g. Warhol absent from VG Bild-Kunst's search). OC records the pointer and the human-set state; it does not adjudicate.",
+          "description": "How the declaration may be checked, and by whom it has been — PROVENANCE for the declaration, never a second verdict. MANUAL link-out only — no automated registry call is made or implied (no complete registry API exists; automated name-search yields false negatives, e.g. Warhol absent from VG Bild-Kunst's search). If a human checking `registryUrl` finds the assignment differs from what was declared, they correct `assignedCategories` itself — the gate (§5) reads only `assignedCategories`, never this block, so there is no separate 'verified' or 'conflict' state for OC to assert (that would be OC adjudicating the declaration, which the standard does not do).",
           "properties": {
             "method": { "const": "manual-link-out" },
             "registryUrl": {
               "type": "string", "format": "uri",
               "description": "The society's public name-search / member page a human uses to check. A pointer, not a data source OC reads."
             },
-            "verifiedBy": { "type": "string", "description": "Who performed the manual check, if any." },
-            "verifiedAt": { "type": "string", "format": "date-time" },
-            "state": {
-              "type": "string",
-              "description": "declared-unverified = the artist's word, unchecked (default). manually-verified = a human confirmed against the society's public search. conflict = the society's public record differs from the declaration (⇒ fail-closed, §5.4).",
-              "enum": ["declared-unverified", "manually-verified", "conflict"]
-            }
+            "verifiedBy": { "type": "string", "description": "Who performed a manual check against `registryUrl`, if any. Absent = declared and never checked; presence records that someone looked, not that OC vouches for the result." },
+            "verifiedAt": { "type": "string", "format": "date-time", "description": "When the check happened, if it did." }
           }
         }
       }
@@ -119,7 +113,7 @@ exception). Named `grantAuthority` so a future publisher / estate / gallery-excl
 
 *(The `allOf`/`if-then` binds `societyName` to `society:'other'`. It is expressed at the top level because JSON Schema
 `if/then` cannot be nested cleanly under a `$ref`'d sub-object with `additionalProperties:false`; final placement is
-an implementation detail for OM-CR to confirm against the 2020-12 conformance harness.)*
+an implementation detail to confirm against the 2020-12 conformance harness at schema-authoring time.)*
 
 ## 4. `@context` additions (JSON-LD)
 
@@ -174,8 +168,12 @@ Let `A = grantAuthority.collectingSociety.assignedCategories`.
   applicable and its absence is correct — the CC0/PD basis already grounds the grant. (A CC0 dedication is itself the
   authority; a collecting society cannot re-encumber a public-domain work.)
 
-**5.4 `conflict`** (society's public record differs from the declaration) ⇒ fail-closed on reproduction until
-resolved, same as an assignment covering reproduction.
+**5.4 A discrepancy found on manual check is not a separate state — it corrects the declaration.** If a human
+following `verification.registryUrl` finds the society's public record differs from what `assignedCategories`
+currently says, the fix is to **update `assignedCategories` to what is now known** (recording `verifiedBy`/
+`verifiedAt` for that correction), or set it to `unknown` if the discrepancy cannot yet be resolved (§5.5, fail-closed
+on reproduction). There is no third `verification` state for OC to hold pending resolution — the declaration itself
+is either corrected or marked unknown; OC never carries a flagged-but-unresolved "conflict" verdict.
 
 **5.5 `unknown`** (member, scope unconfirmed) ⇒ fail-closed on reproduction. Ambiguous authority is a deny, exactly
 as an ambiguous licence is under the v0.1 fail-closed contract. Onboarding SHOULD drive `unknown` toward a resolved
@@ -195,19 +193,26 @@ grant," the exact wrong direction under fail-closed. So:
 
 - OC **MUST NOT** call, scrape, or imply an automated society lookup.
 - `verification.registryUrl` is a **pointer a human follows**, not a source OC reads.
-- `verification.state` is **human-set**: it defaults to `declared-unverified` (the artist's word) and only a human
-  may raise it to `manually-verified`. This keeps the element inside the govern-identity-not-truth model: OC records
-  the declaration and the pointer; it does not certify the fact.
+- `verification.verifiedBy`/`verifiedAt` record that a human looked, and when — never that OC certified the fact.
+  There is no verified/unverified state for OC to hold: the declaration (`assignedCategories`) is either what the
+  artist stated, unchanged, or it has been corrected by whoever checked it. Either way, OC records and points; it
+  does not adjudicate.
 
 ## 7. Versioning & v0.1-safe bridge
 
 - **v0.2, additive, new namespace.** v0.1 stays frozen; no published v0.1 URI moves (VERSIONING.md).
 - New rule id `right-assigned-to-collecting-society` joins the v0.2 rule registry (open set; no schema change to add).
-- **v0.1-safe bridge** (same pattern as the `models3d` ruling): a v0.1 producer MAY carry the block inside v0.1
-  `extensions` under the v0.2 namespace; a v0.1 consumer MUST-ignore it. A v0.1 consumer that ignores it will read the
-  artist's `commercialReproduction` at face value — therefore the **bridge is advisory only**, and any commercial gate
-  relying on an artist-signed v0.1 manifest SHOULD require the v0.2 element to be understood (documented as a
-  known v0.1 boundary — ties to `[[openclearance-v01-capability-boundary]]`).
+- **v0.1-safe bridge — the gate lives in the v0.1 body, not only in the extension.** The `grantAuthority` block
+  itself rides in v0.1 `extensions` under the v0.2 namespace (a v0.1 consumer MUST-ignore the extension, per the
+  v0.1-safe pattern) — but §5.1's rule is not carried only there. **Normative: whenever `grantAuthority` gates a
+  facet closed, the v0.1-visible `clearance.commercialReproduction.permitted` (or `.derivatives.permitted`) MUST
+  already read `false`.** v0.1 already permits `permitted:false` with a `basis`, so a v0.1-only consumer that has
+  never heard of `grantAuthority` still reads the safe, correct answer directly off the core v0.1 field it already
+  understands — it does not need to understand the extension at all. **The bridge MUST NOT be used to carry a gate
+  that the v0.1 body itself contradicts**: a manifest where the extension records an assignment away but the core
+  `clearance` boolean still reads `true` is an inconsistent manifest under §5.1 and MUST be rejected, never shipped.
+  With this, the element closes the failure it exists to close for every consumer, v0.1-only or v0.2-aware — there
+  is no advisory-only gap.
 
 ## 8. Onboarding capture (the artist flow — declaration, not interrogation)
 
@@ -223,8 +228,8 @@ At artist onboarding, capture three things, in plain language:
    check manually.
 
 The onboarding UI **links out** to the relevant society's search/member page for a manual check; it never calls it.
-`verification.state` starts at `declared-unverified`. (UI copy is OM-A's build + OM-QC's gate; this proposal fixes the
-data captured and the fail-closed defaults, not the pixels.)
+`verification.verifiedBy`/`verifiedAt` stay unset until a human actually checks. (This proposal fixes the data
+captured and the fail-closed defaults, not the UI copy or pixels.)
 
 ## 9. Worked examples
 
@@ -233,7 +238,7 @@ data captured and the fail-closed defaults, not the pixels.)
 "grantAuthority": { "collectingSociety": {
   "society": "prolitteris", "memberId": "PL-XXXXX",
   "assignedCategories": ["commercial-reproduction", "resale-royalty"],
-  "verification": { "method": "manual-link-out", "registryUrl": "https://prolitteris.ch/…", "state": "declared-unverified" }
+  "verification": { "method": "manual-link-out", "registryUrl": "https://prolitteris.ch/…" }
 }},
 "clearance": { "commercialReproduction": {
   "permitted": false,
@@ -248,23 +253,35 @@ The manifest is **honest**: it names the society as the path, rather than assert
 **9.2 Non-member (or nothing relevant assigned) → artist's grant stands.**
 ```jsonc
 "grantAuthority": { "collectingSociety": { "society": "none", "assignedCategories": ["none"],
-  "verification": { "method": "manual-link-out", "state": "declared-unverified" } } }
+  "verification": { "method": "manual-link-out" } } }
 ```
 `clearance.commercialReproduction` proceeds on the artist's own declaration — the authority axis imposes no constraint.
 
-## 10. What this unlocks for the deck (OM-ST, via OM-OR)
+## 9a. Conformance vectors required
 
-The design lets the deck honestly claim **"every artefact gets an honest manifest"**: for a society member, the
-manifest does not fabricate a reproduction grant the artist assigned away — it records the society as the licensing
-path. That is the honesty the collector is buying. The deck should present it as *the standard refusing to overclaim
-on the artist's behalf*, not as a limitation. **Coordinate exact deck wording through OM-OR → OM-ST; this doc is the
-source of truth for what the standard actually does.**
+1. `assignedCategories` contains `commercial-reproduction` ⇒ `clearance.commercialReproduction.permitted: false` in
+   the **v0.1-visible field itself**, with `basis.rule: "right-assigned-to-collecting-society"` (§5.1, §7).
+2. **Negative:** a manifest whose `grantAuthority` gates a facet closed but whose v0.1-visible
+   `clearance.commercialReproduction.permitted` still reads `true` ⇒ `REJECTED` (§7, the v0.1-bridge fix — proves the
+   gate cannot be satisfied only in the ignorable extension).
+3. `assignedCategories: ["none"]` ⇒ no constraint on `clearance`; the artist's own declaration stands (§5.3, §9.2).
+4. `assignedCategories: ["unknown"]` ⇒ `clearance.commercialReproduction.permitted: false` (§5.5).
+5. **Negative:** `assignedCategories: ["none", "commercial-reproduction"]` and `assignedCategories: ["unknown", "none"]`
+   ⇒ schema-invalid (the sentinel-exclusivity constraint on `assignedCategories`).
+6. `verification` present with only `method` (no `verifiedBy`/`verifiedAt`) ⇒ valid; declared-and-unchecked is a
+   normal state, not a defect.
+7. `verification.verifiedBy`/`verifiedAt` present ⇒ carried as provenance only; does **not** change the
+   `clearance` verdict, which is driven solely by `assignedCategories` (§6, §5.4).
 
-## 11. Open items for OM-OR / Pramod
+## 10. What this makes possible to say honestly
 
-- **Definitive ProLitteris answer** ("what may a member self-license directly?") — bounded email drafted for Pramod
-  (see companion file). The `assignedCategories` default-mapping for a ProLitteris member firms up once answered.
-- **Baseline society set** — v0.2 ships the five named; `other` covers the rest. Confirm the five are the right
-  first tranche for Pramod's collector base.
-- **Normative sign-off** — this changes the manifest shape, so adoption into a published v0.2 is an OM-OR/Pramod
-  decision (my `escalate_to_opus_when` boundary); this proposal is the design, not a unilateral schema flip.
+For a society member, the manifest no longer fabricates a reproduction grant the artist assigned away — it records
+the society as the licensing path instead. That is a real honesty guarantee to point to: the standard refusing to
+overclaim on an artist's behalf, not a limitation of the format.
+
+## 11. Open questions
+
+- **Definitive answer on what a collecting-society member may self-license directly** — firms up the
+  `assignedCategories` default mapping once answered; per-society, since practice differs.
+- **Baseline society set** — this proposal ships five named societies (ProLitteris, VG Bild-Kunst, ADAGP, DACS, ARS);
+  `other` covers the rest. Worth confirming this is the right first tranche before publication.
