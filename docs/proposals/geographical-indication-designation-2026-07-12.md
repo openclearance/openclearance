@@ -1,11 +1,9 @@
 # Spec addition — Geographical Indication & origin/authenticity marks (the DESIGNATION axis)
 
-**Date:** 2026-07-12 · **Author:** OM-C (standard lane) · **Target version:** v0.2 (additive; v0.1 FROZEN)
-**Status:** REVIEW-READY → OM-CR (spec gate) → OM-OR sequences into the v0.2 wave → Pramod
+**Date:** 2026-07-12, revised 2026-08-04 · **Target version:** v0.2 (additive; v0.1 FROZEN)
 **Rides:** the v0.2 wave, alongside `grantAuthority` (collecting-society) and the **evidence pointer**.
 **Depends on:** `evidence-pointer-2026-07-12.md` — GI is its **first consumer**.
 **Anchor:** UNDRIP Art. 31 (traditional cultural expressions) — this is its rights-vocabulary expression.
-**Branch:** `feat/gi-designation` (local, not pushed — OM-OR sequences).
 
 > **RE-AIMED 2026-07-12 (Pramod, mid-flight).** An earlier draft of this document designed a *verification* method for
 > GI claims (register citation, a "stronger tier," a verification-state ladder) on the premise that GI registers are
@@ -57,9 +55,12 @@ the case is closed.
 > **A protected designation constrains what a NEW PRODUCT may be NAMED. It does NOT constrain whether an existing
 > work may be REPRODUCED.**
 
-**D-1 (normative).** The `designation` block **MUST NOT** modify, reduce, or condition any `clearance.*` facet. A
-manifest in which a designation has reduced a clearance boolean is **inconsistent**; a conforming verifier **MUST
-reject it** (`REJECTED`) — not merely advise. Specifically:
+**D-1 (normative).** The `designation` block **MUST NOT** modify, reduce, or condition any `clearance.*` facet. Stated
+**operationally**, so it is a single-manifest, mechanically checkable rule rather than a counterfactual a verifier
+cannot test against a document it doesn't have a second copy of: **`clearance.*.basis.inputs` MUST NOT reference any
+`/designation/*` path** (symmetric with `evidence-pointer-2026-07-12.md`'s E-1, which applies the identical
+restriction to `/evidence/*` inputs). A manifest whose `clearance.*.basis.inputs` cites a `/designation/*` path is
+**inconsistent**; a conforming verifier **MUST reject it** (`REJECTED`) — not merely advise. Specifically:
 
 - A **CC0 / public-domain** work carrying a designation mark **remains fully cleared for reproduction.** A CC0 museum
   scan of an 18th-century Pattachitra is **not** restricted by a modern GI. A register created in the 2000s cannot
@@ -119,7 +120,7 @@ adjudication, no verified state.** Every substantive field is a **declared self-
         "type": "string",
         "enum": ["gi-india", "eu-pdo", "eu-pgi", "certification-mark", "collective-mark", "indigenous-authenticity-mark", "code-of-conduct", "other"]
       },
-      "schemeName": { "type": "string", "minLength": 1, "description": "e.g. 'GI Registry (India)', 'Toi Iho', 'Igloo Tag', 'Indigenous Art Code'. REQUIRED when scheme='other'." },
+      "schemeName": { "type": "string", "minLength": 1, "description": "e.g. 'GI Registry (India)', 'Toi Iho', 'Igloo Tag', 'Indigenous Art Code'. REQUIRED when scheme='other' (enforced below, not prose-only)." },
 
       "legalBasis": {
         "type": "string",
@@ -174,23 +175,46 @@ adjudication, no verified state.** Every substantive field is a **declared self-
         }
       },
       "declaredAt": { "type": "string", "format": "date-time" }
-    }
+    },
+    "allOf": [
+      {
+        "if": { "properties": { "scheme": { "const": "other" } } },
+        "then": { "required": ["schemeName"] }
+      },
+      {
+        "description": "Correlate the unambiguous statutory schemes with their legal basis, so a claim cannot pair e.g. scheme=eu-pdo (definitionally statutory) with legalBasis=voluntary-code. Schemes whose legal force genuinely varies by instance (indigenous-authenticity-mark, code-of-conduct, other) are left uncorrelated on purpose — that variance is real, not a gap.",
+        "if": { "properties": { "scheme": { "enum": ["gi-india", "eu-pdo", "eu-pgi"] } } },
+        "then": { "properties": { "legalBasis": { "const": "statutory-gi" } } }
+      },
+      {
+        "if": { "properties": { "scheme": { "const": "certification-mark" } } },
+        "then": { "properties": { "legalBasis": { "const": "certification-trademark" } } }
+      },
+      {
+        "if": { "properties": { "scheme": { "const": "collective-mark" } } },
+        "then": { "properties": { "legalBasis": { "const": "collective-trademark" } } }
+      }
+    ]
   },
 
   "productNaming": {
     "type": "object",
-    "required": ["protectedNameUsePermitted", "basis", "permittedDescriptor"],
+    "required": ["protectedNameUsePermitted", "basis", "permittedDescriptor", "jurisdiction"],
     "additionalProperties": false,
     "description": "The instant, machine-actionable answer for a product DERIVED from this work (e.g. an OM print): may that product be DESIGNATED by the protected name? Reuses v0.1 `$defs/basis`. This is the ONLY thing the designation axis gates — it NEVER gates reproduction (D-1). It is a deterministic function of the DECLARED inputs, not an adjudication of their truth (§6).",
     "properties": {
       "protectedNameUsePermitted": {
         "type": "boolean",
-        "description": "MAY a derived product be designated BY the protected name, ON THE STRENGTH OF THE DECLARANT'S OWN ATTESTATION? `false` does not forbid truthfully DESCRIBING the work (D-3) and does not restrict reproduction (D-1)."
+        "description": "MAY a derived product be designated BY the protected name, ON THE STRENGTH OF THE DECLARANT'S OWN ATTESTATION, IN `jurisdiction`? `false` does not forbid truthfully DESCRIBING the work (D-3) and does not restrict reproduction (D-1)."
       },
       "basis": { "$ref": "#/$defs/basis" },
       "permittedDescriptor": {
         "type": "string", "minLength": 1,
         "description": "The honest phrasing a product MAY lawfully bear. Precedent: v0.1 `citation` already carries rendered strings."
+      },
+      "jurisdiction": {
+        "type": "string",
+        "description": "The jurisdiction this verdict is scoped to (matches the relevant `marks[].jurisdiction`). A designation right is territorial (D-9): a consumer operating outside this jurisdiction MUST NOT read `protectedNameUsePermitted` as applying there. `true` in one jurisdiction says nothing about any other."
       }
     }
   }
@@ -203,10 +227,16 @@ adjudication, no verified state.** Every substantive field is a **declared self-
 - **D-2** — fail-closed directions differ: `unknown` ⇒ deny the **name**, never the reproduction. *(§3)*
 - **D-3** — truthful descriptive reference to the work is always permitted. *(§3)*
 - **D-4 — the claim is the basis, and it is labelled as such.** `producerClaim.claimsAuthorisation = "claimed"` **and**
-  `workDesignation = "claimed"` ⇒ `protectedNameUsePermitted: true`, rule **`self-attested-authorised-user`**. The
-  `basis.summary` **MUST** state that this rests on the declarant's own attestation and is **not verified by
-  OpenClearance**. *(The maker is accountable for their claim — signed, on the record. That is the CA/HTTPS model:
-  bind the claim to an accountable identity; do not certify its truth.)*
+  `workDesignation = "claimed"` **and** `legalBasis` is a **confirmed** basis (`statutory-gi` / `certification-trademark`
+  / `collective-trademark` — i.e. NOT `voluntary-code` and NOT `unknown`) ⇒ `protectedNameUsePermitted: true`, rule
+  **`self-attested-authorised-user`**. The `legalBasis` guard closes a real gap: without it, a claim combining
+  `legalBasis: "unknown"` with an otherwise-satisfied claim would still read as permitted under the antecedent's literal
+  wording — labelling a product with a protected name while the manifest itself admits it doesn't know whether the
+  underlying right is even a real statutory or trademark designation, rather than possibly just a voluntary code (D-8's
+  exact failure mode, reappearing at `legalBasis: "unknown"` specifically). The `basis.summary` **MUST** state that this
+  rests on the declarant's own attestation and is **not verified by OpenClearance**. *(The maker is accountable for
+  their claim — signed, on the record. That is the CA/HTTPS model: bind the claim to an accountable identity; do not
+  certify its truth.)*
 - **D-5 — historical works.** `claimsAuthorisation = "not-applicable"` ⇒ `protectedNameUsePermitted: false`, rule
   **`mark-not-applicable-historical`**, with a truthful `permittedDescriptor`. **`clearance` untouched** — the CC0-scan
   case, and the whole point.
@@ -217,14 +247,26 @@ adjudication, no verified state.** Every substantive field is a **declared self-
   asserts that OC checked anything. *(This replaces the deleted verification tier — see §6.)*
 - **D-8 — voluntary codes confer no designation right.** `legalBasis: voluntary-code` MUST NOT set
   `protectedNameUsePermitted: true`. Carried for transparency; its obligations are operational, not manifest-borne.
-- **D-9 — territoriality.** A designation right is territorial. A consumer MUST NOT infer protection *or* permission
-  outside `jurisdiction`. Fail-closed on the name.
+  *(D-4's guard already excludes `voluntary-code` from the confirmed-basis set — D-8 names this specific case
+  explicitly, since it's the one real-world instance most likely to be hit: Australia's Indigenous Art Code.)*
+- **D-9 — territoriality.** A designation right is territorial, and the verdict is scoped: `productNaming.jurisdiction`
+  names the jurisdiction `protectedNameUsePermitted` applies to. A consumer MUST NOT infer protection *or* permission
+  outside that jurisdiction — `true` in one place says nothing about any other. Fail-closed on the name outside scope.
+- **D-10 — absence of the `designation` block is not a finding either way.** Most works carry no designation claim at
+  all (the block is optional). Absence MUST NOT be read as "no cultural rights exist" or as "handled" — it means only
+  that no claim was declared. Same principle as `marks: []` (§8), extended to the whole block being absent.
+- **D-11 — a hedged claim (`workDesignation: "attributed"`) resolves the same as `unknown`.** A claimant asserting
+  only that a work is *attributed to* the protected class (the museum-cataloguing equivalent of "attributed to X"),
+  rather than *of* it, has not made the `claimed` assertion D-4 requires ⇒ `protectedNameUsePermitted: false`, rule
+  **`designation-claim-attributed-only`**. Stated explicitly rather than left as an unwritten default: a hedged claim
+  is real input a producer will encounter, and "no rule disposes of it yet" is exactly the kind of half-specified
+  condition that produces divergent implementations later, even when today's only conforming default is already safe.
 - **E-1 (inherited, and it BITES here).** **Evidence of making NEVER flips `protectedNameUsePermitted`.** A beautiful
   process video does **not** upgrade the verdict. `productNaming.basis.inputs` MUST NOT cite an `evidence` item. The
   video is there **for a human**. *(See `evidence-pointer-2026-07-12.md`.)*
 
 v0.2 rule ids (open set): `self-attested-authorised-user` · `no-designation-claimed` · `designation-claim-unknown` ·
-`mark-not-applicable-historical` · `voluntary-code-no-designation-right`.
+`designation-claim-attributed-only` · `mark-not-applicable-historical` · `voluntary-code-no-designation-right`.
 **Deleted from the earlier draft:** ~~`authorised-user-of-registered-gi`~~, ~~`no-authorised-user-status`~~ — both
 implied a verification OC does not and will not perform.
 
@@ -250,10 +292,10 @@ is honest. A KYC-gated *"guaranteed authentic"* registry is **our foil, not our 
 > **The line: the standard carries the CLAIM plus a tamper-evident POINTER to evidence; the platform SHOWS the
 > evidence; the human decides. OpenClearance never says "this GI is true."**
 
-**The seam with OMA.** OMA hosts and displays the making-of gallery (*"the GI proof in its making"*), rendering it by
-filtering `evidence[]` on `supports` → this mark, re-hashing each item against `integrity.hash` before display. **OC
-hosts not one byte** and grades nothing. OC makes it *possible*; OMA builds it. *(OM-A build; OM-QC gates the copy —
-which must never present the gallery as verification.)*
+**The seam with the platform.** A consuming platform (Open Museum or any other) can host and display a making-of
+gallery (*"the GI proof in its making"*), rendering it by filtering `evidence[]` on `supports` → this mark, re-hashing
+each item against `integrity.hash` before display. **OC hosts not one byte** and grades nothing. OC makes it
+*possible*; the platform builds it, and the display copy must never present the gallery as verification.
 
 ## 7. Where it bites
 
@@ -287,9 +329,16 @@ let anyone imply it has.
   consumers. Because the axis is **non-restrictive** (D-1), a v0.1 consumer that ignores it **loses nothing about
   reproduction** — a strictly safer ignore-failure than `grantAuthority`'s (where ignoring means over-granting).
 - **Conformance vectors:** the CC0-historical case (D-1/D-5 — `clearance` stays `true`); the self-attested-claim case
-  (D-4, with the "not verified by OC" summary); the `unknown` case (D-2); **negative:** a manifest whose designation
-  reduced a clearance boolean ⇒ `REJECTED` (D-1); **negative:** `productNaming.basis.inputs` citing an `evidence` item
-  ⇒ `REJECTED` (E-1); a manifest carrying any GI *verification/verified* field ⇒ **schema-invalid** (D-7).
+  (D-4, with the "not verified by OC" summary); the `unknown` case (D-2); **negative:** a manifest whose
+  `clearance.*.basis.inputs` references a `/designation/*` path ⇒ `REJECTED` (D-1, restated operationally); **negative:**
+  `productNaming.basis.inputs` citing an `evidence` item ⇒ `REJECTED` (E-1); a manifest carrying any GI
+  *verification/verified* field ⇒ **schema-invalid** (D-7); **negative:** `legalBasis: "unknown"` combined with an
+  otherwise-D-4-satisfying claim ⇒ `protectedNameUsePermitted: false` (D-4's guard, closing the gap the earlier draft
+  missed); **negative:** `scheme: "eu-pdo"` paired with `legalBasis: "voluntary-code"` ⇒ schema-invalid (the
+  scheme/legalBasis correlation); `workDesignation: "attributed"` ⇒ `protectedNameUsePermitted: false` (D-11);
+  `productNaming.jurisdiction` present and a consumer scoped to a different jurisdiction ⇒ MUST NOT read the verdict
+  as applying there (D-9); `designation` block entirely absent ⇒ valid, no finding either way (D-10); `scheme: "other"`
+  without `schemeName` ⇒ schema-invalid.
 
 ## 10. Rulings that are genuinely Pramod's — NOT decided here
 
@@ -303,7 +352,8 @@ let anyone imply it has.
 - **P-3.** Does the artisan program actively help artisans **document their making** (the evidence path is now the
   proof path — this is where the program's effort should go, rather than into registry chasing)?
 - **P-4.** Is the v0.2 baseline `scheme` set the right first tranche?
-- **P-5 — CROSS-ELEMENT CONSISTENCY (also raised in the evidence doc).** The `grantAuthority` element still carries a
-  `verification` block with `manually-verified` / `conflict` states. Under this ruling, OC recording a "verified" state
-  is OC adjudicating. **Recommend harmonising it to the claim+evidence model.** I have not touched that branch — it is
-  in OM-OR's gate.
+- **P-5 — cross-element consistency: RESOLVED.** The `grantAuthority` element's `verification` block previously
+  carried `manually-verified`/`conflict` states, which was OC recording a verdict about a declaration — the exact
+  adjudication this ruling forbids. Harmonised (`collecting-society-status-2026-07-05.md`, revised 2026-08-04): no
+  verified/unverified state; a discrepancy found on manual check corrects the declaration itself. Both elements now
+  share the same shape — declare, optionally point at who checked and when, never a verdict.
