@@ -1,10 +1,8 @@
 # Spec addition — the EVIDENCE POINTER (a general primitive; OC records and points, it never adjudicates)
 
-**Date:** 2026-07-12 · **Author:** OM-C (standard lane) · **Target version:** v0.2 (additive; v0.1 FROZEN)
-**Status:** REVIEW-READY → OM-CR → OM-OR sequences into the v0.2 wave → Pramod
+**Date:** 2026-07-12, revised 2026-08-04 · **Target version:** v0.2 (additive; v0.1 FROZEN)
 **First consumer:** the GI / designation element (`geographical-indication-designation-2026-07-12.md`). Designed as a
 **general** primitive — any self-attested claim may point at evidence.
-**Branch:** `feat/gi-designation` (local, not pushed).
 
 ---
 
@@ -73,7 +71,14 @@ The wiring is a **JSON Pointer from the evidence to the claim it supports** — 
 
 - **E-6 — ONE DIRECTION ONLY.**
   Evidence points **at** the claim (`supports`); a claim does **not** list its evidence. A single direction means the
-  two can never disagree. A renderer (OMA) collects an item's evidence by filtering `evidence[]` on `supports`.
+  two can never disagree. A renderer collects an item's evidence by filtering `evidence[]` on `supports`.
+
+- **E-7 — `supports` MUST resolve.**
+  The `pattern: "^/"` constraint on `supports` only checks it's *shaped* like a JSON Pointer — nothing requires it to
+  actually resolve to a node that exists in the manifest, so an evidence item could point at a claim that isn't
+  there. A conforming verifier MUST resolve `supports` (RFC 6901) against the manifest and MUST reject the manifest
+  if it does not resolve. This does not weaken E-1 (evidence still never changes a verdict) — it closes a separate
+  gap, an evidence item silently pointing at nothing.
 
 ## 4. The field (normative schema fragment, v0.2)
 
@@ -198,8 +203,8 @@ New **optional** top-level array. Reuses the v0.1 integrity idiom (`{alg: "sha-2
 after the fact. Independent third-party time-anchoring is on the roadmap; today the timestamp carries our accountable
 attestation, not an independent clock."* Do **not** say "provably not backdated" until RFC-3161 ships.
 
-*(This is the third time this lane has had to correct an RFC-3161-is-live assumption — Amar longevity doc §2.2, and now
-here. Recommend OM-OR treat "RFC-3161 is live" as a standing red-flag phrase in any brief until v0.3 lands.)*
+*("RFC-3161 is live" has been a recurring overclaim in earlier drafts of adjacent material — worth treating as a
+standing red-flag phrase in any external copy until v0.3 actually ships it.)*
 
 ## 6. Onboarding capture (the maker's side)
 
@@ -217,8 +222,8 @@ being displayed, fetch each item from its `locator`, **re-hash and compare again
 (so a tampered or substituted file is caught at render time), and show it with its caption.
 
 OMA hosts the bytes. **OC hosts none, and grades none.** The gallery is captioned as what it is — *the maker showing
-their work* — never as verification. **OM-A/OM-QC own that copy; the standard just guarantees the structure and the
-tamper-evidence.**
+their work* — never as verification. The standard guarantees the structure and the tamper-evidence; the display copy
+is the hosting platform's responsibility, and it must never present the gallery as OC's verification.
 
 ## 8. Conformance vectors required
 
@@ -229,6 +234,8 @@ tamper-evidence.**
 4. Broken/unreachable `locator` → manifest still **valid**, verdict **unchanged** (E-3).
 5. `timeAnchor` absent → manifest MUST NOT be read as independently timestamped (E-4).
 6. Evidence attached to a claim, verdict **identical** to the same manifest without it (E-1, positive control).
+7. **Negative (E-7):** an evidence item's `supports` pointer does not resolve (RFC 6901) to any node in the manifest
+   → schema/manifest invalid.
 
 ## 9. Versioning & v0.1-safe bridge
 
@@ -238,13 +245,11 @@ tamper-evidence.**
   reaches the *identical* determination. This is the cleanest bridge of the three v0.2 elements, and it is a direct
   consequence of E-1. (Contrast `grantAuthority`, where ignoring the block means over-granting.)
 
-## 10. For OM-OR / Pramod
+## 10. Open items
 
-- **Cross-element consistency question (yours to rule, not mine).** The `grantAuthority` / collecting-society element
-  (branch `feat/collecting-society-status`, currently in your gate) still carries a `verification` block with
-  `manual-link-out` and states `manually-verified` / `conflict`. Under the "OC does not adjudicate" ruling, should that
-  be **harmonised** to this model — i.e. record *who checked and when* as a plain attestation, with **no verified
-  state and no grade**? **My recommendation: yes, harmonise** — a `manually-verified` state is OC recording a verdict,
-  which is the thing we just said OC does not do. I have **not** touched that branch; it is under your gate.
+- **Cross-element consistency: RESOLVED.** The `grantAuthority`/collecting-society element's `verification` block
+  previously carried `manually-verified`/`conflict` states — OC recording a verdict, the thing this ruling forbids.
+  Harmonised (`collecting-society-status-2026-07-05.md`, revised 2026-08-04): record *who checked and when* as a
+  plain attestation, no verified state, no grade. Both elements now share the same shape.
 - **RFC-3161** remains the one real gap (E-4). It is the difference between "cannot be swapped" (have it) and "cannot
-  be backdated" (don't). Worth pulling forward in the v0.3 wave if evidence-of-making becomes load-bearing commercially.
+  be backdated" (don't). Worth pulling forward if evidence-of-making becomes load-bearing commercially.
