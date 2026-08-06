@@ -5,7 +5,7 @@
 **Depends on:** `evidence-pointer-2026-07-12.md` — GI is its **first consumer**.
 **Anchor:** UNDRIP Art. 31 (traditional cultural expressions) — this is its rights-vocabulary expression.
 
-> **RE-AIMED 2026-07-12 (Pramod, mid-flight).** An earlier draft of this document designed a *verification* method for
+> **RE-AIMED 2026-07-12 (mid-flight correction).** An earlier draft of this document designed a *verification* method for
 > GI claims (register citation, a "stronger tier," a verification-state ladder) on the premise that GI registers are
 > public and enumerable. **That premise is deleted.** A GI claim **cannot be verified — not by OpenClearance, and not
 > by a government.** It is a **self-claim, full stop.** Designing a verification tier would make OC a *vouching
@@ -340,7 +340,7 @@ let anyone imply it has.
   as applying there (D-9); `designation` block entirely absent ⇒ valid, no finding either way (D-10); `scheme: "other"`
   without `schemeName` ⇒ schema-invalid.
 
-## 10. Rulings that are genuinely Pramod's — NOT decided here
+## 10. Open questions — not decided here
 
 - **P-1 (legal, needs counsel — the big one).** Does a giclée/photographic **print** of a GI-protected painting fall
   within the GI's **registered goods class** at all? If not, naming a print may not be capable of infringing, and our
