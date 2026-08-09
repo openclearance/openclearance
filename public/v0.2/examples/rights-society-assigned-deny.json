@@ -1,0 +1,111 @@
+{
+  "@context": [
+    "https://openclearance.org/v0.2/context.jsonld"
+  ],
+  "type": "ClearanceManifest",
+  "specVersion": "0.2",
+  "work": {
+    "id": "example:member-work-1",
+    "title": "Untitled",
+    "artist": {
+      "name": "Example Artist",
+      "attributionType": "named"
+    },
+    "displayDate": "2025",
+    "yearStart": 2025,
+    "yearEnd": 2025,
+    "medium": "Oil on canvas"
+  },
+  "source": {
+    "museum": {
+      "code": "artist-direct",
+      "name": "Artist-submitted record"
+    }
+  },
+  "rights": {
+    "statement": null,
+    "sourceApiValue": null,
+    "imageOpenAccess": false,
+    "metadataOpenAccess": true,
+    "confidence": "high"
+  },
+  "clearance": {
+    "commercialReproduction": {
+      "permitted": false,
+      "basis": {
+        "rule": "right-assigned-to-collecting-society",
+        "inputs": [
+          {
+            "field": "grantAuthority.collectingSociety.society",
+            "value": "prolitteris"
+          },
+          {
+            "field": "grantAuthority.collectingSociety.assignedCategories",
+            "value": [
+              "commercial-reproduction"
+            ]
+          }
+        ],
+        "summary": "Commercial reproduction is administered by the artist's collecting society; it is licensable via the society, not by the artist's direct grant."
+      }
+    },
+    "derivatives": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No open rights statement applies; derivative use is not cleared."
+      }
+    },
+    "attributionRequired": {
+      "required": true,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No waiver applies; attribution is required."
+      }
+    }
+  },
+  "verification": {
+    "determinedBy": {
+      "actor": "Example Artist",
+      "role": "artist"
+    },
+    "tool": "clearance-engine/reference",
+    "determinedAt": "2026-08-01T12:00:00Z",
+    "ruleContext": "v0.2-conformance-fixture",
+    "determinationSource": {
+      "type": "rights-gate-default",
+      "retrievedAt": "2026-08-01T11:59:00Z"
+    }
+  },
+  "citation": {
+    "full": "Example Artist, Untitled, 2025. Artist-submitted record. All rights reserved.",
+    "caption": "Example Artist, Untitled, 2025.",
+    "short": "Example Artist, Untitled, 2025"
+  },
+  "grantAuthority": {
+    "collectingSociety": {
+      "society": "prolitteris",
+      "memberId": "PL-00000",
+      "assignedCategories": [
+        "commercial-reproduction",
+        "resale-royalty"
+      ],
+      "verification": {
+        "method": "manual-link-out",
+        "registryUrl": "https://prolitteris.example.org/members"
+      }
+    }
+  }
+}

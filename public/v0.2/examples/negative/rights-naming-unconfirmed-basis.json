@@ -1,0 +1,129 @@
+{
+  "@context": [
+    "https://openclearance.org/v0.2/context.jsonld"
+  ],
+  "type": "ClearanceManifest",
+  "specVersion": "0.2",
+  "work": {
+    "id": "example:maker-work-1",
+    "title": "Untitled",
+    "artist": {
+      "name": "Example Maker",
+      "attributionType": "named"
+    },
+    "displayDate": "2025",
+    "yearStart": 2025,
+    "yearEnd": 2025,
+    "medium": "Oil on canvas"
+  },
+  "source": {
+    "museum": {
+      "code": "artist-direct",
+      "name": "Artist-submitted record"
+    }
+  },
+  "rights": {
+    "statement": null,
+    "sourceApiValue": null,
+    "imageOpenAccess": false,
+    "metadataOpenAccess": true,
+    "confidence": "high"
+  },
+  "clearance": {
+    "commercialReproduction": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No open rights statement applies; commercial reproduction is not cleared."
+      }
+    },
+    "derivatives": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No open rights statement applies; derivative use is not cleared."
+      }
+    },
+    "attributionRequired": {
+      "required": true,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No waiver applies; attribution is required."
+      }
+    }
+  },
+  "verification": {
+    "determinedBy": {
+      "actor": "Example Maker",
+      "role": "artist"
+    },
+    "tool": "clearance-engine/reference",
+    "determinedAt": "2026-08-01T12:00:00Z",
+    "ruleContext": "v0.2-conformance-fixture",
+    "determinationSource": {
+      "type": "rights-gate-default",
+      "retrievedAt": "2026-08-01T11:59:00Z"
+    }
+  },
+  "citation": {
+    "full": "Example Maker, Untitled, 2025. Artist-submitted record. All rights reserved.",
+    "caption": "Example Maker, Untitled, 2025.",
+    "short": "Example Maker, Untitled, 2025"
+  },
+  "designation": {
+    "marks": [
+      {
+        "scheme": "indigenous-authenticity-mark",
+        "schemeName": "Example Authenticity Mark",
+        "legalBasis": "unknown",
+        "name": "Example Protected Name",
+        "jurisdiction": "NZ",
+        "workDesignation": "claimed",
+        "producerClaim": {
+          "claimsAuthorisation": "claimed"
+        },
+        "declaredBy": {
+          "actor": "Example Maker",
+          "role": "maker"
+        }
+      }
+    ],
+    "productNaming": {
+      "protectedNameUsePermitted": true,
+      "basis": {
+        "rule": "self-attested-authorised-user",
+        "inputs": [
+          {
+            "field": "designation.marks.0.workDesignation",
+            "value": "claimed"
+          },
+          {
+            "field": "designation.marks.0.producerClaim.claimsAuthorisation",
+            "value": "claimed"
+          }
+        ],
+        "summary": "Permits the protected name while the legal basis of the mark is unknown. This rests on the declarant's own attestation and is not verified by OpenClearance."
+      },
+      "permittedDescriptor": "Example Protected Name work by Example Maker.",
+      "jurisdiction": "NZ"
+    }
+  }
+}

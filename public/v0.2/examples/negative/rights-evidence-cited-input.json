@@ -1,0 +1,143 @@
+{
+  "@context": [
+    "https://openclearance.org/v0.2/context.jsonld"
+  ],
+  "type": "ClearanceManifest",
+  "specVersion": "0.2",
+  "work": {
+    "id": "example:artisan-work-2",
+    "title": "Untitled",
+    "artist": {
+      "name": "Example Artisan",
+      "attributionType": "named"
+    },
+    "displayDate": "2025",
+    "yearStart": 2025,
+    "yearEnd": 2025,
+    "medium": "Oil on canvas"
+  },
+  "source": {
+    "museum": {
+      "code": "artist-direct",
+      "name": "Artist-submitted record"
+    }
+  },
+  "rights": {
+    "statement": null,
+    "sourceApiValue": null,
+    "imageOpenAccess": false,
+    "metadataOpenAccess": true,
+    "confidence": "high"
+  },
+  "clearance": {
+    "commercialReproduction": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No open rights statement applies; commercial reproduction is not cleared."
+      }
+    },
+    "derivatives": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No open rights statement applies; derivative use is not cleared."
+      }
+    },
+    "attributionRequired": {
+      "required": true,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No waiver applies; attribution is required."
+      }
+    }
+  },
+  "verification": {
+    "determinedBy": {
+      "actor": "Example Artisan",
+      "role": "artist"
+    },
+    "tool": "clearance-engine/reference",
+    "determinedAt": "2026-08-01T12:00:00Z",
+    "ruleContext": "v0.2-conformance-fixture",
+    "determinationSource": {
+      "type": "rights-gate-default",
+      "retrievedAt": "2026-08-01T11:59:00Z"
+    }
+  },
+  "citation": {
+    "full": "Example Artisan, Untitled, 2025. Artist-submitted record. All rights reserved.",
+    "caption": "Example Artisan, Untitled, 2025.",
+    "short": "Example Artisan, Untitled, 2025"
+  },
+  "designation": {
+    "marks": [
+      {
+        "scheme": "gi-india",
+        "legalBasis": "statutory-gi",
+        "name": "Orissa Pattachitra",
+        "jurisdiction": "IN",
+        "workDesignation": "claimed",
+        "producerClaim": {
+          "claimsAuthorisation": "claimed"
+        },
+        "declaredBy": {
+          "actor": "Example Artisan",
+          "role": "maker"
+        }
+      }
+    ],
+    "productNaming": {
+      "protectedNameUsePermitted": true,
+      "basis": {
+        "rule": "self-attested-authorised-user",
+        "inputs": [
+          {
+            "field": "evidence.0.id",
+            "value": "ev-1"
+          }
+        ],
+        "summary": "Cites the process video as grounds for the naming verdict. This rests on the declarant's own attestation and is not verified by OpenClearance."
+      },
+      "permittedDescriptor": "Orissa Pattachitra by Example Artisan.",
+      "jurisdiction": "IN"
+    }
+  },
+  "evidence": [
+    {
+      "id": "ev-1",
+      "type": "process-video",
+      "supports": "/designation/marks/0",
+      "mediaType": "video/mp4",
+      "integrity": {
+        "alg": "sha-256",
+        "hash": "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809"
+      },
+      "locator": [
+        "https://platform.example.org/evidence/artisan-work-2/making.mp4"
+      ],
+      "declaredBy": {
+        "actor": "Example Artisan",
+        "role": "maker"
+      }
+    }
+  ]
+}
