@@ -76,6 +76,7 @@
     "ruleContext": "oc:ruleContext",
     "determinationSource": "prov:wasDerivedFrom",
     "retrievedAt": { "@id": "oc:retrievedAt", "@type": "xsd:dateTime" },
+    "jurisdictions": "oc2:jurisdictions",
 
     "citation": {
       "@id": "oc:citation",

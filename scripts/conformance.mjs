@@ -571,12 +571,14 @@ function checkV02Consistency(manifest) {
   });
 
   // Protected-name guard: `true` requires a qualifying self-attested claim on a
-  // confirmed legal basis.
+  // confirmed legal basis. 'registered' (a self-claimed register entry) and
+  // 'claimed' (self-claimed authorisation without one) both qualify; badge
+  // display on a consuming surface is a stricter, display-side matter.
   if (designation?.productNaming?.protectedNameUsePermitted === true) {
     const qualifies = (designation.marks ?? []).some(
       (m) =>
         m?.workDesignation === "claimed" &&
-        m?.producerClaim?.claimsAuthorisation === "claimed" &&
+        ["registered", "claimed"].includes(m?.producerClaim?.claimsAuthorisation) &&
         CONFIRMED_LEGAL_BASES.has(m?.legalBasis)
     );
     if (!qualifies) {
@@ -684,6 +686,7 @@ const V02_VECTORS = {
   "negative/rights-other-society-unnamed.json": { schema: "0.2", valid: false },
   "negative/rights-evidence-grade.json": { schema: "0.2", valid: false },
   "negative/rights-mark-verification-field.json": { schema: "0.2", valid: false },
+  "negative/rights-jurisdictions-bad-scope.json": { schema: "0.2", valid: false },
 };
 
 for (const [rel, expect] of Object.entries(V02_VECTORS)) {
@@ -781,6 +784,18 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       pass(`${rel} naming basis.summary states the verdict is not verified by OpenClearance`);
     } else {
       fail(`${rel} naming basis.summary must state the verdict rests on attestation, not verification`);
+    }
+    // A registered-user claim is what a consuming surface keys badge display to:
+    // the value, its stated register identifier, and evidence pointed at the
+    // producer claim itself — all machine-readable from the manifest alone.
+    const pc = manifest.designation.marks[0].producerClaim;
+    const evidenceAtClaim = (manifest.evidence ?? []).some(
+      (e) => resolvePointer(manifest, e.supports) === pc
+    );
+    if (pc.claimsAuthorisation === "registered" && pc.authorisedUserRef && evidenceAtClaim) {
+      pass(`${rel} carries a registered-user claim with its register ref and evidence at the claim node`);
+    } else {
+      fail(`${rel} must claim 'registered' with authorisedUserRef and evidence supporting the producer claim`);
     }
   }
 }

@@ -8,12 +8,12 @@
     "id": "example:pattachitra-jagannath-18c",
     "title": "Jagannath Trinity (Pattachitra)",
     "artist": {
-      "name": "Unknown",
-      "attributionType": "anonymous"
+      "name": "Example Living Artist",
+      "attributionType": "named"
     },
-    "displayDate": "18th century",
-    "yearStart": 1700,
-    "yearEnd": 1799,
+    "displayDate": "2020",
+    "yearStart": 2020,
+    "yearEnd": 2020,
     "medium": "Natural pigments on cloth"
   },
   "source": {
@@ -90,7 +90,7 @@
       "retrievedAt": "2026-08-01T11:59:00Z"
     },
     "jurisdictions": [
-      "worldwide"
+      "Global"
     ]
   },
   "citation": {
@@ -98,60 +98,15 @@
     "caption": "Jagannath Trinity (Pattachitra), 18th century. Example Museum of Art (CC0).",
     "short": "Jagannath Trinity, 18th c., Example Museum of Art"
   },
-  "designation": {
-    "marks": [
-      {
-        "scheme": "gi-india",
-        "legalBasis": "statutory-gi",
-        "name": "Orissa Pattachitra",
-        "jurisdiction": "IN",
-        "workDesignation": "claimed",
-        "producerClaim": {
-          "claimsAuthorisation": "not-applicable"
-        },
-        "declaredBy": {
-          "actor": "example-museum",
-          "role": "curatorial-record"
-        },
-        "declaredAt": "2026-08-01T12:00:00Z"
-      }
-    ],
-    "productNaming": {
-      "protectedNameUsePermitted": false,
-      "basis": {
-        "rule": "mark-not-applicable-historical",
-        "inputs": [
-          {
-            "field": "designation.marks.0.producerClaim.claimsAuthorisation",
-            "value": "not-applicable"
-          }
-        ],
-        "summary": "The maker predates the geographical-indication scheme; a derived product is not designated by the protected name. This verdict rests on the declared record and is not verified by OpenClearance."
-      },
-      "permittedDescriptor": "Fine-art print reproducing a Pattachitra painting (Odisha, 18th century), after the original held by the Example Museum of Art.",
-      "jurisdiction": "IN"
-    }
-  },
-  "evidence": [
-    {
-      "id": "ev-1",
-      "type": "document",
-      "supports": "/designation/marks/0",
-      "mediaType": "application/pdf",
-      "byteSize": 482133,
-      "integrity": {
-        "alg": "sha-256",
-        "hash": "9f2b4d1c8a7e6f5d4c3b2a1908f7e6d5c4b3a291807f6e5d4c3b2a19f8e7d6c5"
-      },
-      "locator": [
-        "https://museum.example.org/records/pattachitra-jagannath-18c/catalogue.pdf"
+  "grantAuthority": {
+    "collectingSociety": {
+      "society": "none",
+      "assignedCategories": [
+        "none"
       ],
-      "capturedAt": "2026-07-15T09:30:00Z",
-      "declaredBy": {
-        "actor": "example-museum",
-        "role": "curatorial-record"
-      },
-      "caption": "Catalogue record identifying the work as Orissa Pattachitra."
+      "verification": {
+        "method": "manual-link-out"
+      }
     }
-  ]
+  }
 }

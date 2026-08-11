@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openclearance.org/v0.2/clearance-manifest.schema.json",
   "title": "Clearance Manifest v0.2",
-  "description": "Additive v0.2 of the Clearance Manifest. The entire v0.1 body is carried unchanged (v0.1 is frozen; no published v0.1 URI moves), plus three new OPTIONAL top-level axes: `grantAuthority` (does the declaring party HOLD the right they purport to grant — gates a clearance facet CLOSED when a right has been assigned away), `designation` (what the work may lawfully be CALLED and who may call it that — MUST NEVER touch any clearance facet), and `evidence` (tamper-evident pointers to off-manifest evidence a HUMAN judges — never changes any verdict). Every substantive claim in the new axes is a DECLARED self-claim: OpenClearance records and points; it does not adjudicate, verify, or grade. Cross-field consistency rules (the authority gate, the designation/evidence input bans, evidence-pointer resolution, the protected-name guard) are verifier-enforced, not schema-expressible; a manifest violating them is inconsistent and a conforming verifier MUST treat it as REJECTED. v0.1-safe bridge: a v0.1 manifest MAY carry these three blocks inside `extensions` under the key 'https://openclearance.org/v0.2/'; a v0.1 consumer MUST-ignores them, and whenever `grantAuthority` gates a facet closed the v0.1-visible clearance boolean itself MUST already read false, so a v0.1-only consumer still reads the safe answer.",
+  "description": "Additive v0.2 of the Clearance Manifest. The entire v0.1 body is carried (v0.1 is frozen; no published v0.1 URI moves) with exactly one additive, optional extension inside it — `verification.jurisdictions`, scoping which law the determination was evaluated under — plus three new OPTIONAL top-level axes: `grantAuthority` (does the declaring party HOLD the right they purport to grant — gates a clearance facet CLOSED when a right has been assigned away), `designation` (what the work may lawfully be CALLED and who may call it that — MUST NEVER touch any clearance facet), and `evidence` (tamper-evident pointers to off-manifest evidence a HUMAN judges — never changes any verdict). Every substantive claim in the new axes is a DECLARED self-claim: OpenClearance records and points; it does not adjudicate, verify, or grade. Cross-field consistency rules (the authority gate, the designation/evidence input bans, evidence-pointer resolution, the protected-name guard) are verifier-enforced, not schema-expressible; a manifest violating them is inconsistent and a conforming verifier MUST treat it as REJECTED. v0.1-safe bridge: a v0.1 manifest MAY carry these three blocks inside `extensions` under the key 'https://openclearance.org/v0.2/'; a v0.1 consumer MUST-ignores them, and whenever `grantAuthority` gates a facet closed the v0.1-visible clearance boolean itself MUST already read false, so a v0.1-only consumer still reads the safe answer.",
   "type": "object",
   "required": ["@context", "type", "specVersion", "work", "source", "rights", "clearance", "verification"],
   "additionalProperties": false,
@@ -135,6 +135,13 @@
         "tool": { "type": "string", "minLength": 1 },
         "determinedAt": { "type": "string", "format": "date-time" },
         "ruleContext": { "type": "string", "minLength": 1 },
+        "jurisdictions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "OPTIONAL (new in v0.2): the jurisdiction(s) whose law this determination was evaluated under — ISO 3166-1 alpha-2 codes, 'EU', or the single value 'worldwide'. 'worldwide' MUST only be declared when every input grounding the verdict is jurisdiction-independent (e.g. a universal waiver such as CC0 granted by the holder of all relevant rights layers, including any non-original-photograph right in the reproduction itself). Rights in the REPRODUCTION layer genuinely diverge by forum: EU law (Directive 2019/790 Art. 14) excludes non-original reproductions of public-domain works of visual art from copyright and related rights, while Swiss law (URG Art. 2 para. 3bis, in force 2020) protects non-original photographic depictions of three-dimensional objects for 50 years from production — so a third-party photograph of a public-domain sculpture, textile, or ceramic can carry rights in one forum that it lacks in another. A consumer operating under a jurisdiction not listed here MUST NOT read the clearance verdicts as having been evaluated for its law; when the field is absent the determination declares no jurisdictional scope and the same consumer duty applies. Fail-closed across borders: this field scopes the determination, it never extends it.",
+          "items": { "type": "string", "pattern": "^([A-Z]{2}|worldwide)$" }
+        },
         "determinationSource": {
           "type": "object",
           "required": ["type", "retrievedAt"],
@@ -353,8 +360,8 @@
           "properties": {
             "claimsAuthorisation": {
               "type": "string",
-              "enum": ["claimed", "not-claimed", "not-applicable"],
-              "description": "'claimed' = the maker asserts authorised-user / licensee status. 'not-claimed' = they make no such claim (NOT a finding that they are unauthorised). 'not-applicable' = the maker predates or falls outside the scheme (e.g. an 18th-century artisan)."
+              "enum": ["registered", "claimed", "not-claimed", "not-applicable"],
+              "description": "'registered' = the maker asserts they appear on the scheme's register of authorised users (the strongest self-claim; still SELF-ATTESTED — OpenClearance does not consult the register — and normally accompanied by `authorisedUserRef` and evidence). 'claimed' = the maker asserts authorised-user / licensee status without asserting a register entry. 'not-claimed' = they make no such claim (NOT a finding that they are unauthorised). 'not-applicable' = the maker predates or falls outside the scheme (e.g. an 18th-century artisan). A consuming platform that displays an origin badge or label derives that display SOLELY from this declared, evidence-backed field — never from an out-of-manifest assertion — and statutory schemes typically attach label rights to REGISTERED users, so a platform SHOULD key badge display to 'registered' specifically; how the badge is presented (e.g. subordinate to the named maker) is the platform's display policy, not manifest-borne."
             },
             "authorisedUserRef": {
               "type": ["string", "null"],
@@ -397,7 +404,7 @@
       "type": "object",
       "required": ["protectedNameUsePermitted", "basis", "permittedDescriptor", "jurisdiction"],
       "additionalProperties": false,
-      "description": "The instant, machine-actionable answer for a product DERIVED from this work: may that product be DESIGNATED by the protected name? Reuses the v0.1 basis shape. This is the ONLY thing the designation axis gates — it NEVER gates reproduction. It is a deterministic function of the DECLARED inputs, not an adjudication of their truth. NORMATIVE (verifier-enforced): `true` requires a mark whose workDesignation and producerClaim.claimsAuthorisation are both 'claimed' AND whose legalBasis is a confirmed basis (statutory-gi / certification-trademark / collective-trademark — never voluntary-code, never unknown); the basis.summary MUST state that the verdict rests on the declarant's own attestation and is not verified by OpenClearance. basis.inputs MUST NOT cite an evidence item — evidence never upgrades this verdict.",
+      "description": "The instant, machine-actionable answer for a product DERIVED from this work: may that product be DESIGNATED by the protected name? Reuses the v0.1 basis shape. This is the ONLY thing the designation axis gates — it NEVER gates reproduction. It is a deterministic function of the DECLARED inputs, not an adjudication of their truth. NORMATIVE (verifier-enforced): `true` requires a mark whose workDesignation is 'claimed', whose producerClaim.claimsAuthorisation is 'registered' or 'claimed', AND whose legalBasis is a confirmed basis (statutory-gi / certification-trademark / collective-trademark — never voluntary-code, never unknown); the basis.summary MUST state that the verdict rests on the declarant's own attestation and is not verified by OpenClearance. basis.inputs MUST NOT cite an evidence item — evidence never upgrades this verdict.",
       "properties": {
         "protectedNameUsePermitted": {
           "type": "boolean",

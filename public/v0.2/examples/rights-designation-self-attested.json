@@ -98,7 +98,7 @@
         "jurisdiction": "IN",
         "workDesignation": "claimed",
         "producerClaim": {
-          "claimsAuthorisation": "claimed",
+          "claimsAuthorisation": "registered",
           "authorisedUserRef": "AU-EXAMPLE-1"
         },
         "declaredBy": {
@@ -119,14 +119,14 @@
           },
           {
             "field": "designation.marks.0.producerClaim.claimsAuthorisation",
-            "value": "claimed"
+            "value": "registered"
           },
           {
             "field": "designation.marks.0.legalBasis",
             "value": "statutory-gi"
           }
         ],
-        "summary": "The maker asserts authorised-user status under the statutory geographical indication. This rests on the declarant's own attestation and is not verified by OpenClearance."
+        "summary": "The maker asserts registered authorised-user status under the statutory geographical indication. This rests on the declarant’s own attestation and is not verified by OpenClearance."
       },
       "permittedDescriptor": "Orissa Pattachitra by Example Artisan (self-attested authorised user).",
       "jurisdiction": "IN"
@@ -136,7 +136,7 @@
     {
       "id": "ev-1",
       "type": "process-video",
-      "supports": "/designation/marks/0",
+      "supports": "/designation/marks/0/producerClaim",
       "mediaType": "video/mp4",
       "byteSize": 148203311,
       "integrity": {
