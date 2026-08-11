@@ -1,0 +1,140 @@
+{
+  "@context": [
+    "https://openclearance.org/v0.2/context.jsonld"
+  ],
+  "type": "ClearanceManifest",
+  "specVersion": "0.2",
+  "work": {
+    "id": "example:minai-bowl-13c",
+    "title": "Bowl with enthroned figure (minai ware)",
+    "artist": {
+      "name": "Unknown",
+      "attributionType": "anonymous"
+    },
+    "displayDate": "13th century",
+    "yearStart": 1200,
+    "yearEnd": 1299,
+    "medium": "Stonepaste, polychrome enamel"
+  },
+  "source": {
+    "museum": {
+      "code": "example-aggregator",
+      "name": "Example Image Aggregator"
+    },
+    "pageUrl": "https://images.example.org/minai-bowl-13c"
+  },
+  "rights": {
+    "statement": "http://creativecommons.org/publicdomain/mark/1.0/",
+    "sourceApiValue": {
+      "field": "license",
+      "value": "PDM"
+    },
+    "imageOpenAccess": true,
+    "metadataOpenAccess": true,
+    "confidence": "medium"
+  },
+  "clearance": {
+    "commercialReproduction": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "verification.jurisdictions",
+            "value": [
+              "EU",
+              "CH"
+            ]
+          }
+        ],
+        "summary": "The verdict diverges across the asserted scope; the core boolean carries the fail-closed conjunction. Per-jurisdiction entries carry the refinement."
+      }
+    },
+    "derivatives": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": "http://creativecommons.org/publicdomain/mark/1.0/"
+          }
+        ],
+        "summary": "A public-domain mark describes the underlying work; it waives nothing in the reproduction layer. Derivative use is not cleared."
+      }
+    },
+    "attributionRequired": {
+      "required": true,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": "http://creativecommons.org/publicdomain/mark/1.0/"
+          }
+        ],
+        "summary": "No waiver applies; attribution is required."
+      }
+    }
+  },
+  "verification": {
+    "determinedBy": {
+      "actor": "example-aggregator",
+      "role": "image-aggregator"
+    },
+    "tool": "clearance-engine/reference",
+    "determinedAt": "2026-08-01T12:00:00Z",
+    "ruleContext": "v0.2-conformance-fixture",
+    "determinationSource": {
+      "type": "api-field",
+      "field": "rights_statement",
+      "url": "https://api.museum.example.org/works/pattachitra-jagannath-18c",
+      "retrievedAt": "2026-08-01T11:59:00Z"
+    },
+    "jurisdictions": [
+      "EU",
+      "CH"
+    ]
+  },
+  "citation": {
+    "full": "Unknown artist, Jagannath Trinity (Pattachitra), 18th century. Example Museum of Art. CC0.",
+    "caption": "Jagannath Trinity (Pattachitra), 18th century. Example Museum of Art (CC0).",
+    "short": "Jagannath Trinity, 18th c., Example Museum of Art"
+  },
+  "jurisdictionAssessments": [
+    {
+      "jurisdiction": "EU",
+      "facet": "commercialReproduction",
+      "outcome": true,
+      "basis": {
+        "rule": "faithful-reproduction-unprotected",
+        "inputs": [
+          {
+            "field": "work.yearEnd",
+            "value": 1299
+          },
+          {
+            "field": "rights.statement",
+            "value": "http://creativecommons.org/publicdomain/mark/1.0/"
+          }
+        ],
+        "summary": "The work of visual art is in the public domain and the photograph is a non-original faithful reproduction; under Directive (EU) 2019/790 Art. 14 the reproduction carries no copyright or related rights in the EU."
+      }
+    },
+    {
+      "jurisdiction": "CH",
+      "facet": "commercialReproduction",
+      "outcome": false,
+      "basis": {
+        "rule": "non-original-photograph-protected",
+        "inputs": [
+          {
+            "field": "work.medium",
+            "value": "Stonepaste, polychrome enamel"
+          }
+        ],
+        "summary": "The photograph depicts a three-dimensional object; under Swiss URG Art. 2 para. 3bis it is protected for 50 years from production even without individual character, and no waiver from the photographer is on record."
+      }
+    }
+  ]
+}

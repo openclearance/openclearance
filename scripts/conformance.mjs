@@ -441,6 +441,8 @@ const KNOWN_RULES_V02 = new Set([
   "designation-claim-attributed-only",
   "mark-not-applicable-historical",
   "voluntary-code-no-designation-right",
+  "faithful-reproduction-unprotected",
+  "non-original-photograph-protected",
 ]);
 
 function verifyManifestV02Advisories(manifest) {
@@ -463,6 +465,9 @@ function verifyManifestV02Advisories(manifest) {
     manifest.designation?.productNaming?.basis?.rule,
     "designation.productNaming.basis.rule"
   );
+  (manifest.jurisdictionAssessments ?? []).forEach((entry, idx) => {
+    checkRule(entry?.basis?.rule, `jurisdictionAssessments.${idx}.basis.rule`);
+  });
   return advisories;
 }
 
@@ -499,6 +504,7 @@ function v02Blocks(manifest) {
     grantAuthority: manifest.grantAuthority ?? ext.grantAuthority,
     designation: manifest.designation ?? ext.designation,
     evidence: manifest.evidence ?? ext.evidence,
+    jurisdictionAssessments: manifest.jurisdictionAssessments ?? ext.jurisdictionAssessments,
   };
 }
 
@@ -512,7 +518,7 @@ const CONFIRMED_LEGAL_BASES = new Set([
 // problem means the manifest is inconsistent and MUST be treated as REJECTED.
 function checkV02Consistency(manifest) {
   const problems = [];
-  const { grantAuthority, designation, evidence } = v02Blocks(manifest);
+  const { grantAuthority, designation, evidence, jurisdictionAssessments } = v02Blocks(manifest);
 
   // Authority gate: assigned-away (or unconfirmed) rights must already read
   // false in the v0.1-visible clearance boolean.
@@ -557,6 +563,67 @@ function checkV02Consistency(manifest) {
   if (cites(designation?.productNaming?.basis?.inputs, "evidence")) {
     problems.push("designation.productNaming.basis.inputs cites an evidence item");
   }
+  (jurisdictionAssessments ?? []).forEach((entry, idx) => {
+    if (cites(entry?.basis?.inputs, "designation")) {
+      problems.push(`jurisdictionAssessments[${idx}].basis.inputs cites a designation path`);
+    }
+    if (cites(entry?.basis?.inputs, "evidence")) {
+      problems.push(`jurisdictionAssessments[${idx}].basis.inputs cites an evidence item`);
+    }
+  });
+
+  // Jurisdiction coherence (J-1..J-4): the asserted scope and its per-jurisdiction
+  // refinement must compose fail-closed with the core clearance booleans.
+  const scope = manifest.verification?.jurisdictions;
+  const entries = jurisdictionAssessments ?? [];
+  if (entries.length > 0) {
+    if (!Array.isArray(scope) || scope.length === 0) {
+      problems.push("jurisdictionAssessments present without a declared verification.jurisdictions scope");
+    } else if (scope.includes("worldwide")) {
+      problems.push(
+        "jurisdictionAssessments present under a 'worldwide' scope — worldwide asserts jurisdiction-independent grounds, which per-jurisdiction divergence contradicts"
+      );
+    } else {
+      for (const [idx, entry] of entries.entries()) {
+        if (!scope.includes(entry?.jurisdiction)) {
+          problems.push(
+            `jurisdictionAssessments[${idx}] assesses '${entry?.jurisdiction}', which is outside the asserted scope`
+          );
+        }
+      }
+      const byFacet = new Map();
+      for (const entry of entries) {
+        if (!byFacet.has(entry.facet)) byFacet.set(entry.facet, []);
+        byFacet.get(entry.facet).push(entry);
+      }
+      for (const [facet, facetEntries] of byFacet) {
+        const covered = new Set(facetEntries.map((e) => e.jurisdiction));
+        const missing = scope.filter((j) => !covered.has(j));
+        if (missing.length > 0) {
+          problems.push(
+            `jurisdictionAssessments for ${facet} do not cover the full asserted scope (missing: ${missing.join(", ")})`
+          );
+        }
+        const outcomes = facetEntries.map((e) => e.outcome === true);
+        const core = manifest.clearance?.[facet];
+        if (facet === "attributionRequired") {
+          const conjunction = outcomes.some(Boolean);
+          if (core && core.required !== conjunction) {
+            problems.push(
+              `clearance.attributionRequired.required must be ${conjunction} (required anywhere in scope requires it in the core boolean)`
+            );
+          }
+        } else {
+          const conjunction = outcomes.every(Boolean);
+          if (core && core.permitted !== conjunction) {
+            problems.push(
+              `clearance.${facet}.permitted must be ${conjunction} (the fail-closed conjunction of the per-jurisdiction outcomes)`
+            );
+          }
+        }
+      }
+    }
+  }
 
   // Evidence pointers must resolve. Bridge-carried blocks are hoisted so a
   // pointer such as /designation/marks/0 resolves in either carriage.
@@ -564,6 +631,7 @@ function checkV02Consistency(manifest) {
   if (grantAuthority !== undefined) resolutionDoc.grantAuthority = grantAuthority;
   if (designation !== undefined) resolutionDoc.designation = designation;
   if (evidence !== undefined) resolutionDoc.evidence = evidence;
+  if (jurisdictionAssessments !== undefined) resolutionDoc.jurisdictionAssessments = jurisdictionAssessments;
   (evidence ?? []).forEach((item, idx) => {
     if (resolvePointer(resolutionDoc, item?.supports) === undefined) {
       problems.push(`evidence[${idx}].supports ('${item?.supports}') does not resolve to any node`);
@@ -687,6 +755,10 @@ const V02_VECTORS = {
   "negative/rights-evidence-grade.json": { schema: "0.2", valid: false },
   "negative/rights-mark-verification-field.json": { schema: "0.2", valid: false },
   "negative/rights-jurisdictions-bad-scope.json": { schema: "0.2", valid: false },
+  "rights-jurisdiction-divergence.json": { schema: "0.2", valid: true, verdict: "ok", extra: "divergence" },
+  "negative/rights-jurisdiction-core-overgrant.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  "negative/rights-jurisdiction-partial-matrix.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  "negative/rights-jurisdiction-under-worldwide.json": { schema: "0.2", valid: true, verdict: "rejected" },
 };
 
 for (const [rel, expect] of Object.entries(V02_VECTORS)) {
@@ -736,6 +808,16 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
   }
 
   // Named follow-on checks per vector.
+  if (expect.extra === "divergence") {
+    const core = manifest.clearance.commercialReproduction.permitted;
+    const eu = manifest.jurisdictionAssessments.find((e) => e.jurisdiction === "EU");
+    const ch = manifest.jurisdictionAssessments.find((e) => e.jurisdiction === "CH");
+    if (core === false && eu?.outcome === true && ch?.outcome === false) {
+      pass(`${rel} core boolean is the fail-closed conjunction; the EU entry refines upward, the CH entry denies`);
+    } else {
+      fail(`${rel} must deny in the core boolean while carrying EU=permitted / CH=denied refinements`);
+    }
+  }
   if (expect.extra === "assigned-deny") {
     const facet = manifest.clearance.commercialReproduction;
     if (facet.permitted === false && facet.basis.rule === "right-assigned-to-collecting-society") {

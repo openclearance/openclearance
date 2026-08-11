@@ -77,6 +77,9 @@
     "determinationSource": "prov:wasDerivedFrom",
     "retrievedAt": { "@id": "oc:retrievedAt", "@type": "xsd:dateTime" },
     "jurisdictions": "oc2:jurisdictions",
+    "jurisdictionAssessments": "oc2:jurisdictionAssessments",
+    "facet": "oc2:facet",
+    "outcome": { "@id": "oc2:outcome", "@type": "xsd:boolean" },
 
     "citation": {
       "@id": "oc:citation",

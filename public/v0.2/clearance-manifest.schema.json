@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openclearance.org/v0.2/clearance-manifest.schema.json",
   "title": "Clearance Manifest v0.2",
-  "description": "Additive v0.2 of the Clearance Manifest. The entire v0.1 body is carried (v0.1 is frozen; no published v0.1 URI moves) with exactly one additive, optional extension inside it — `verification.jurisdictions`, scoping which law the determination was evaluated under — plus three new OPTIONAL top-level axes: `grantAuthority` (does the declaring party HOLD the right they purport to grant — gates a clearance facet CLOSED when a right has been assigned away), `designation` (what the work may lawfully be CALLED and who may call it that — MUST NEVER touch any clearance facet), and `evidence` (tamper-evident pointers to off-manifest evidence a HUMAN judges — never changes any verdict). Every substantive claim in the new axes is a DECLARED self-claim: OpenClearance records and points; it does not adjudicate, verify, or grade. Cross-field consistency rules (the authority gate, the designation/evidence input bans, evidence-pointer resolution, the protected-name guard) are verifier-enforced, not schema-expressible; a manifest violating them is inconsistent and a conforming verifier MUST treat it as REJECTED. v0.1-safe bridge: a v0.1 manifest MAY carry these three blocks inside `extensions` under the key 'https://openclearance.org/v0.2/'; a v0.1 consumer MUST-ignores them, and whenever `grantAuthority` gates a facet closed the v0.1-visible clearance boolean itself MUST already read false, so a v0.1-only consumer still reads the safe answer.",
+  "description": "Additive v0.2 of the Clearance Manifest. The entire v0.1 body is carried (v0.1 is frozen; no published v0.1 URI moves) with exactly one additive, optional extension inside it — `verification.jurisdictions`, scoping which law the determination was evaluated under — plus three new OPTIONAL top-level axes: `grantAuthority` (does the declaring party HOLD the right they purport to grant — gates a clearance facet CLOSED when a right has been assigned away), `designation` (what the work may lawfully be CALLED and who may call it that — MUST NEVER touch any clearance facet), and `evidence` (tamper-evident pointers to off-manifest evidence a HUMAN judges — never changes any verdict); and, as the companion to `verification.jurisdictions`, the optional `jurisdictionAssessments` block carrying per-jurisdiction refinement of the clearance verdicts where they diverge across the asserted scope. Every substantive claim in the new axes is a DECLARED self-claim: OpenClearance records and points; it does not adjudicate, verify, or grade. Cross-field consistency rules (the authority gate, the designation/evidence input bans, evidence-pointer resolution, the protected-name guard) are verifier-enforced, not schema-expressible; a manifest violating them is inconsistent and a conforming verifier MUST treat it as REJECTED. v0.1-safe bridge: a v0.1 manifest MAY carry these three blocks inside `extensions` under the key 'https://openclearance.org/v0.2/'; a v0.1 consumer MUST-ignores them, and whenever `grantAuthority` gates a facet closed the v0.1-visible clearance boolean itself MUST already read false, so a v0.1-only consumer still reads the safe answer.",
   "type": "object",
   "required": ["@context", "type", "specVersion", "work", "source", "rights", "clearance", "verification"],
   "additionalProperties": false,
@@ -139,8 +139,8 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "description": "OPTIONAL (new in v0.2): the jurisdiction(s) whose law this determination was evaluated under — ISO 3166-1 alpha-2 codes, 'EU', or the single value 'worldwide'. 'worldwide' MUST only be declared when every input grounding the verdict is jurisdiction-independent (e.g. a universal waiver such as CC0 granted by the holder of all relevant rights layers, including any non-original-photograph right in the reproduction itself). Rights in the REPRODUCTION layer genuinely diverge by forum: EU law (Directive 2019/790 Art. 14) excludes non-original reproductions of public-domain works of visual art from copyright and related rights, while Swiss law (URG Art. 2 para. 3bis, in force 2020) protects non-original photographic depictions of three-dimensional objects for 50 years from production — so a third-party photograph of a public-domain sculpture, textile, or ceramic can carry rights in one forum that it lacks in another. A consumer operating under a jurisdiction not listed here MUST NOT read the clearance verdicts as having been evaluated for its law; when the field is absent the determination declares no jurisdictional scope and the same consumer duty applies. Fail-closed across borders: this field scopes the determination, it never extends it.",
-          "items": { "type": "string", "pattern": "^([A-Z]{2}|worldwide)$" }
+          "description": "OPTIONAL (new in v0.2): the ASSERTED SCOPE of this determination — the jurisdiction(s) whose law it was evaluated under. Codes come from an OPEN registry, extensible without a schema change (the rule-registry pattern): ISO 3166-1 alpha-2 codes plus registered supranational codes (the v0.2 registry entries are 'EU' and 'EEA'), or the single value 'worldwide'. 'worldwide' MUST only be declared when every input grounding the verdict is JURISDICTION-INDEPENDENT — e.g. a universal waiver such as CC0 granted by the holder of all relevant rights layers, including any non-original-photograph right in the reproduction itself. JURISDICTION-CONTINGENT grounds (public-domain status, and above all rights in the REPRODUCTION layer) require an explicit scope: EU law (Directive 2019/790 Art. 14) excludes non-original reproductions of public-domain works of visual art from copyright and related rights, while Swiss law (URG Art. 2 para. 3bis, in force 2020) protects non-original photographic depictions of three-dimensional objects for 50 years from production — a third-party photograph of a public-domain sculpture, textile, or ceramic can carry rights in one forum that it lacks in another. An issuing authority asserts only the jurisdictions it brings legal grounding for; every jurisdiction not listed is NOT ASSESSED — never implied clear, never implied encumbered — and what a consumer does with a not-assessed jurisdiction is that consumer's own stated policy. An absent field declares no scope at all, with the same not-assessed consequence everywhere. This field scopes the determination; it never extends it. Where the verdict DIVERGES within the asserted scope, the top-level `jurisdictionAssessments` block carries the per-jurisdiction refinement and the core clearance booleans carry the fail-closed conjunction across the scope.",
+          "items": { "type": "string", "pattern": "^([A-Z]{2,6}|worldwide)$" }
         },
         "determinationSource": {
           "type": "object",
@@ -261,6 +261,12 @@
       "type": "array",
       "description": "GENERAL evidence-pointer block: tamper-evident POINTERS to evidence held OFF-MANIFEST. OpenClearance hosts no bytes. NORMATIVE: evidence NEVER changes a verdict — no basis.inputs may cite an evidence item, and attaching evidence never moves a manifest up the tier ladder; OpenClearance records and points, it does not adjudicate or grade. Evidence exists so a HUMAN can judge. Empty/absent = no evidence offered, which is NOT a negative finding.",
       "items": { "$ref": "#/$defs/evidenceItem" }
+    },
+    "jurisdictionAssessments": {
+      "type": "array",
+      "minItems": 1,
+      "description": "OPTIONAL (new in v0.2): per-jurisdiction refinement of the clearance verdicts, for determinations whose outcome DIVERGES across the asserted scope (`verification.jurisdictions`). Each entry carries one facet's verdict under one jurisdiction's law, with its own basis; evidence may point at an entry via the general `evidence` block. NORMATIVE (verifier-enforced): (J-1) for any facet that has entries, the core clearance boolean MUST equal the fail-closed conjunction of the entry outcomes — false if permission fails anywhere in scope, attribution required if required anywhere in scope — so a consumer that does no jurisdiction processing always reads the conservative answer, while a jurisdiction-aware consumer refines to its own forum's entry; (J-2) entries for a facet MUST cover every jurisdiction in the asserted scope, so the refinement is never a half-specified matrix; (J-3) every entry's jurisdiction MUST be within the asserted scope, and the block requires `verification.jurisdictions` to be present; (J-4) a 'worldwide'-scoped determination MUST NOT carry this block — worldwide asserts jurisdiction-independent grounds, which divergence contradicts. A work clear everywhere on jurisdiction-independent grounds needs no entries and no consumer anywhere fails closed on it.",
+      "items": { "$ref": "#/$defs/jurisdictionAssessment" }
     },
     "extensions": {
       "type": "object",
@@ -492,6 +498,29 @@
           "then": { "required": ["typeName"] }
         }
       ]
+    },
+    "jurisdictionAssessment": {
+      "type": "object",
+      "required": ["jurisdiction", "facet", "outcome", "basis"],
+      "additionalProperties": false,
+      "description": "One facet's verdict under one jurisdiction's law. The issuing authority asserts this entry on its own legal grounding for that jurisdiction; a third-party issuer asserts its own jurisdictions on its own authority. The determination's identity is governed — the law itself is not adjudicated beyond what the basis states.",
+      "properties": {
+        "jurisdiction": {
+          "type": "string",
+          "pattern": "^[A-Z]{2,6}$",
+          "description": "ISO 3166-1 alpha-2 code or a registered supranational code (v0.2 registry: 'EU', 'EEA'). Never 'worldwide' — a worldwide-scoped determination carries no per-jurisdiction divergence."
+        },
+        "facet": {
+          "type": "string",
+          "enum": ["commercialReproduction", "derivatives", "attributionRequired"],
+          "description": "The clearance facet this entry refines."
+        },
+        "outcome": {
+          "type": "boolean",
+          "description": "For commercialReproduction and derivatives: permitted under this jurisdiction's law. For attributionRequired: required under this jurisdiction's law."
+        },
+        "basis": { "$ref": "#/$defs/basis" }
+      }
     },
     "timeAnchor": {
       "type": "object",
