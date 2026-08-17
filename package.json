@@ -13,7 +13,7 @@
     "deploy": "astro build && wrangler pages deploy dist --project-name=openclearance --branch=main --commit-dirty=true"
   },
   "dependencies": {
-    "astro": "^7.1.6",
+    "astro": "^7.2.2",
     "marked": "^18.0.7"
   },
   "devDependencies": {
