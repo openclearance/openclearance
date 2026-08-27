@@ -157,7 +157,46 @@ when a declaration is later shown false, the record itself is the instrument: si
 attributed, content-bound. The standard does not catch liars; it makes lying **cost something
 permanent**.
 
-## 7. Open questions
+## 7. Versioning & v0.1-safe bridge
+
+- **Additive, new namespace.** v0.1 stays frozen; no published v0.1 URI moves (VERSIONING.md). The
+  new rule ids join the rule registry (an open set — adding one breaks no published schema).
+
+- **Why a bridge is required rather than optional.** The shipped v0.1 schema sets
+  `additionalProperties: false` at the document root. A top-level `origination` block carried inline
+  is therefore **schema-invalid to a v0.1 verifier — rejected whole, not ignored.** The direction of
+  that failure is fail-closed and so it is safe; the consequence is not acceptable. Rejection is a
+  compatibility break rather than graceful degradation: it would make a publisher of this axis
+  invalid to every existing consumer at once.
+
+- **The bridge.** `origination` rides in the v0.1 `extensions` container under the new namespace —
+  the forward-compatible escape hatch v0.1 already defines, whose unrecognised terms a consumer MUST
+  ignore. A v0.1 consumer validates the document and reaches a determination rather than rejecting
+  it.
+
+- **⚠ This axis is NOT ignore-safe on its own, and that is why O-4 is mandatory rather than
+  advisory.** The evidence pointer is ignore-safe by construction: because evidence changes no
+  verdict, a consumer that ignores it reaches the *identical* determination. Origination is
+  different in kind, because **it can feed a clearance determination** — a declared-derived work's
+  rights chain runs through its sources. A consumer that ignored the block while the core booleans
+  still read `true` would **over-grant**, in exactly the way ignoring an authority gate would. O-4 is
+  what closes that gap: it requires the consequence to be expressed in the v0.1-visible
+  `clearance.commercialReproduction.permitted` and `clearance.derivatives.permitted`, so a consumer
+  that has never heard of this axis still reads the safe answer off fields it already understands.
+  **The bridge alone would not be sufficient here; the bridge and O-4 together are.** This is the
+  practical significance of the section 2 argument that origination, unlike designation, legitimately
+  feeds a clearance determination — it also determines what compatibility costs.
+
+- **The bridge MUST NOT be used to carry a gate the v0.1 body contradicts.** A manifest whose
+  extension declares derivation with an unresolved source right while the core `clearance` booleans
+  still read `true` is inconsistent under O-4 and MUST be rejected, never shipped. The bridge exists
+  so that older consumers stay correct — not so that a restriction can be filed where they cannot
+  see it.
+
+- **A declaration of `original-creation` grants nothing by itself**, so for that assertion the
+  ignore-failure costs a consumer information, never safety.
+
+## 8. Open questions
 
 - **Q-O1.** Version partition (with the roadmap sign-off): this axis, the AI-disclosure vocabulary,
   and the status/withdrawal layer are three related pieces the partition should sequence together —
@@ -168,3 +207,16 @@ permanent**.
   nobody reads the axis as claiming otherwise.
 - **Q-O3.** Whether `sourceRight: "licensed"` should eventually require a resolvable `rightRef` at
   an attested tier (a licence you can point to), or whether that over-burdens honest small makers.
+  The same question applies to `"permission-granted"`, which is equally unverifiable from the
+  document alone and should be decided together with it rather than raised separately later.
+- **Q-O4.** The incentive shape of an honest declaration, stated openly because implementers
+  otherwise meet it late. Under O-2 absence is not a finding, and under O-4 declaring a source right
+  of `unknown` closes commercial clearance — so a maker with a genuinely unresolved chain is, on the
+  document alone, better served by omitting the block than by completing it honestly. This is not a
+  defect the schema can fix: the standard cannot compel a declaration it also refuses to verify, and
+  a penalty for honesty is the price of the composition rule that makes O-4 meaningful. The control
+  is the one named in section 6 — a platform that requires the declaration at intake, where an
+  omission is visible *as* an omission rather than as silence — and the recorded original-creation
+  declaration carries its own value, so the honest path is not merely altruistic. Any future move to
+  make `unknown` less costly MUST NOT become a route for laundering an unresolved chain into a clean
+  one.
