@@ -120,7 +120,51 @@ hard binding using the C2PA binding appropriate to the container (BMFF hash for 
    with the network loader disabled (M-6) — the conformance harness already refuses network
    fetches, which becomes the enforcement mechanism rather than an accident of test design.
 
-## 6. Open questions
+## 6. Versioning & v0.1-safe bridge
+
+- **Additive, new namespace.** v0.1 stays frozen; no published v0.1 URI moves (VERSIONING.md). New
+  rule ids for the facets join the rule registry (an open set — adding one breaks no published
+  schema).
+
+- **Why a bridge is required rather than optional.** The shipped v0.1 schema sets
+  `additionalProperties: false` at the document root, on `clearance`, and on `source`. A manifest
+  carrying `clearance.displayPlay`, `clearance.stillExport` or `source.media` inline is therefore
+  **schema-invalid to a v0.1 verifier — rejected whole, not partially understood.** The direction of
+  that failure is fail-closed and so it is safe; the consequence is not acceptable. Rejection is not
+  degradation: it makes a publisher of the new vocabulary invalid to every existing consumer at
+  once, turning a version step into a coordinated cutover instead of a gradual adoption.
+
+- **The bridge.** `media`, `displayPlay` and `stillExport` ride in the v0.1 `extensions` container
+  under the new namespace — the forward-compatible escape hatch v0.1 already defines, whose
+  unrecognised terms a consumer MUST ignore. A v0.1 consumer validates the document and reaches a
+  determination rather than rejecting it.
+
+- **What an ignoring consumer concludes, and why that is safe.** v0.1 has no vocabulary for the
+  performance of a time-based work, so a consumer that ignores the extension cannot derive play
+  permission from it: M-3's absent-facet rule holds for that consumer by construction, because no
+  field exists from which a permission could be read. This is the ignore-safe case — ignoring costs
+  such a consumer capability, never safety.
+
+- **The degradation is not neutral, and a rule follows from it.** A consumer that ignores `media`
+  cannot tell the work is time-based at all; it sees at most a still under `source.imageUrls`.
+  **Normative: any still exposed through the v0.1 image fields MUST itself be cleared by the v0.1
+  facets carried in the same manifest.** A poster frame published through `imageUrls` on a manifest
+  whose `commercialReproduction` reads `true` is an assertion about that still — and M-2 makes a
+  still offered as a separate product a distinct use. A work whose frames are not cleared as
+  separate products MUST NOT expose one through the v0.1 image fields while asserting that
+  permission.
+
+- **On carrying a restriction where an older consumer cannot see it.** For an authority gate the
+  anti-abuse rule is sharp: the extension must never gate a facet closed while the v0.1 body still
+  reads `true`. Here it is narrower, because none of v0.1's three facets *is* display — there is no
+  v0.1 field for the extension to contradict. The residual risk is therefore not contradiction but
+  **over-reading**: a consumer treating `commercialReproduction: true` as blanket permission over
+  whatever bytes it can reach. The preceding rule closes the reachable case. Beyond it,
+  `media.renditions` is extension-only by design, so a v0.1 consumer never obtains the moving bytes
+  it might otherwise mis-clear — the delivery rendition is not reachable from the v0.1 surface at
+  all.
+
+## 7. Open questions
 
 - **Q-M1.** Version partition: do `displayPlay`/`stillExport`/`media` enter the current additive
   wave or the next — decided with the standing version-roadmap sign-off, not here.
