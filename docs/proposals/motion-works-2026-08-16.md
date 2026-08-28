@@ -82,6 +82,10 @@ plays such works from a *cached* manifest adds a fourth, operational constraint:
   the work by the same determination, or audio not cleared (which fail-closes `displayPlay` with
   sound). Silence about audio is the one thing the manifest may not offer.
 
+- **M-8 — A still exposed through the v0.1 image fields MUST itself be cleared by the v0.1 facets
+  carried in the same manifest.** The rule exists because of how this vocabulary degrades for a
+  consumer that does not understand it; it is stated in full, with that reasoning, in §6.
+
 ## 4. Field sketch (schema authored after review, following the current version's idioms)
 
 ```jsonc
@@ -120,15 +124,20 @@ hard binding using the C2PA binding appropriate to the container (BMFF hash for 
    with the network loader disabled (M-6) — the conformance harness already refuses network
    fetches, which becomes the enforcement mechanism rather than an accident of test design.
 6. **Negative (M-8):** a motion manifest exposing a still through `source.imageUrls` with
-   `clearance.commercialReproduction.permitted: true` while `stillExport` is not granted ⇒
-   REJECTED. Without this the v0.1-visible surface asserts frame-merchandise permission that the
-   work's own facets withhold — the leak the bridge would otherwise open (M-2, M-4).
-7. **Positive companion to M-8, fixing its boundary:** the same manifest with
-   `commercialReproduction.permitted: false` and a poster frame exposed through `source.imageUrls`
-   ⇒ **valid**. M-8 is conditioned on asserting the permission, not on exposing a still; read
-   without this vector it could be implemented as "a motion work may never publish a poster
-   frame", which removes a capability the rule deliberately preserves. An ordinary still-image
-   manifest is untouched either way — there the image *is* the work.
+   **either** `clearance.commercialReproduction.permitted: true` **or**
+   `clearance.derivatives.permitted: true`, while `stillExport` is not granted ⇒ REJECTED. Both
+   cases MUST be exercised: `derivatives: true` alone grants the same reserved class, since M-4
+   defines `stillExport` as permission to derive still renditions and offer them as products.
+   Without this the v0.1-visible surface asserts frame-merchandise permission that the work's own
+   facets withhold — the leak the bridge would otherwise open (M-2, M-4).
+7. **Positive companion to M-8, fixing its boundary:** the same manifest with **both**
+   `commercialReproduction.permitted: false` **and** `derivatives.permitted: false`, and a poster
+   frame exposed through `source.imageUrls` ⇒ **valid**. Both are pinned deliberately: a fixture
+   that left `derivatives` free would bless the shape vector 6 rejects. M-8 is conditioned on
+   asserting a granting permission, not on exposing a still; read without this vector it could be
+   implemented as "a motion work may never publish a poster frame", which removes a capability the
+   rule deliberately preserves. An ordinary still-image manifest is untouched either way — there
+   the image *is* the work.
 
 ## 6. Versioning & v0.1-safe bridge
 
@@ -158,11 +167,16 @@ hard binding using the C2PA binding appropriate to the container (BMFF hash for 
 - **The degradation is not neutral, and a rule follows from it.** A consumer that ignores `media`
   cannot tell the work is time-based at all; it sees at most a still under `source.imageUrls`.
   **M-8, normative: any still exposed through the v0.1 image fields MUST itself be cleared by the
-  v0.1 facets carried in the same manifest.** A poster frame published through `imageUrls` on a manifest
-  whose `commercialReproduction` reads `true` is an assertion about that still — and M-2 makes a
-  still offered as a separate product a distinct use. A work whose frames are not cleared as
-  separate products MUST NOT expose one through the v0.1 image fields while asserting that
-  permission.
+  v0.1 facets carried in the same manifest.** A poster frame published through `imageUrls` on a
+  manifest whose `commercialReproduction` **or `derivatives`** reads `true` is an assertion about
+  that still — and M-2 makes a still offered as a separate product a distinct use. **A work whose
+  frames are not cleared as separate products MUST NOT expose one through the v0.1 image fields
+  while `clearance.commercialReproduction.permitted` or `clearance.derivatives.permitted` reads
+  `true`.** Both facets are named because either one alone grants the reserved class: M-4 defines
+  `stillExport` as permission to *derive* still renditions and offer them as separate products, so
+  `derivatives: true` over an exposed frame grants exactly what withholding `stillExport` reserves.
+  `attributionRequired` needs no treatment here — it imposes a condition rather than granting a
+  use, so it cannot over-grant.
 
 - **On carrying a restriction where an older consumer cannot see it.** For an authority gate the
   anti-abuse rule is sharp: the extension must never gate a facet closed while the v0.1 body still
