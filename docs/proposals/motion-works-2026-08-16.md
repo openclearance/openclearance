@@ -119,6 +119,16 @@ hard binding using the C2PA binding appropriate to the container (BMFF hash for 
 5. Offline vector: verification of the attested envelope completes against a supplied trust bundle
    with the network loader disabled (M-6) — the conformance harness already refuses network
    fetches, which becomes the enforcement mechanism rather than an accident of test design.
+6. **Negative (M-8):** a motion manifest exposing a still through `source.imageUrls` with
+   `clearance.commercialReproduction.permitted: true` while `stillExport` is not granted ⇒
+   REJECTED. Without this the v0.1-visible surface asserts frame-merchandise permission that the
+   work's own facets withhold — the leak the bridge would otherwise open (M-2, M-4).
+7. **Positive companion to M-8, fixing its boundary:** the same manifest with
+   `commercialReproduction.permitted: false` and a poster frame exposed through `source.imageUrls`
+   ⇒ **valid**. M-8 is conditioned on asserting the permission, not on exposing a still; read
+   without this vector it could be implemented as "a motion work may never publish a poster
+   frame", which removes a capability the rule deliberately preserves. An ordinary still-image
+   manifest is untouched either way — there the image *is* the work.
 
 ## 6. Versioning & v0.1-safe bridge
 
@@ -147,8 +157,8 @@ hard binding using the C2PA binding appropriate to the container (BMFF hash for 
 
 - **The degradation is not neutral, and a rule follows from it.** A consumer that ignores `media`
   cannot tell the work is time-based at all; it sees at most a still under `source.imageUrls`.
-  **Normative: any still exposed through the v0.1 image fields MUST itself be cleared by the v0.1
-  facets carried in the same manifest.** A poster frame published through `imageUrls` on a manifest
+  **M-8, normative: any still exposed through the v0.1 image fields MUST itself be cleared by the
+  v0.1 facets carried in the same manifest.** A poster frame published through `imageUrls` on a manifest
   whose `commercialReproduction` reads `true` is an assertion about that still — and M-2 makes a
   still offered as a separate product a distinct use. A work whose frames are not cleared as
   separate products MUST NOT expose one through the v0.1 image fields while asserting that
