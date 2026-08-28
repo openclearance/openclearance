@@ -138,6 +138,14 @@ hard binding using the C2PA binding appropriate to the container (BMFF hash for 
    implemented as "a motion work may never publish a poster frame", which removes a capability the
    rule deliberately preserves. An ordinary still-image manifest is untouched either way — there
    the image *is* the work.
+8. **M-8 satisfied, and the only vector exercising `stillExport` in its granted state:** a motion
+   manifest with `stillExport` **granted**, a granting facet (`commercialReproduction` or
+   `derivatives`) `true`, and a frame exposed through `source.imageUrls` ⇒ **valid**. This is the
+   third cell of M-8's truth table and the one that shows the rule is *satisfiable* rather than
+   merely avoidable: the still is cleared as a separate product, so exposing it asserts nothing the
+   work's facets withhold. Without it the set covers only how to avoid M-8 and never how to comply
+   with it, and `stillExport` — a first-class facet whose whole purpose is to make frame products
+   possible — appears nowhere in this list in its granted state.
 
 ## 6. Versioning & v0.1-safe bridge
 
