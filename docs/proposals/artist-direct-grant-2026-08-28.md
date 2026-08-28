@@ -126,14 +126,31 @@ Two notes on shape, both deliberate:
   `attributionRequired` to `true`.** Every baseline attribution rule to date waives it. A rule that
   imposes an obligation is subject to A-4: it may only be emitted alongside a `citation`.
 
-### 4.1 What this unblocks, flagged rather than folded
+### 4.1 What this unblocks — and, precisely, what it does not
 
-The registry states that the attribution-bearing licence family is held out of the baseline because
-those licences need `attributionRequired: true` **with a specific credit string**, which the v0.1
-truth tables do not model. The credit string exists — `citation` carries it — and A-4 makes it
-mandatory exactly when the obligation is asserted. **That removes the stated blocker.** Adding
-those licences is nonetheless a separate registry proposal with its own truth tables and vectors,
-and is not folded here.
+The registry holds the attribution- and share-alike-bearing licence family out of the baseline for a
+reason with **two** parts: those licences need `attributionRequired: true` **with a specific credit
+string**, *and* a **`shareAlikeRequired` facet**, neither of which the v0.1 truth tables model.
+
+**A-4 discharges the first part only, and the two members of that family are therefore in different
+positions:**
+
+- **An attribution licence needs nothing further from this document.** The credit string exists —
+  `citation` carries it — and A-4 makes it mandatory exactly when the obligation is asserted. The
+  facet it needs, `attributionRequired`, is already published. Its baseline rules are a registry
+  proposal with its own truth tables and vectors.
+- **A share-alike licence remains blocked, and for a larger reason than a missing rule.** The
+  `clearance` block is closed and carries exactly three facets; there is no `shareAlikeRequired`
+  among them and one cannot be added to a frozen version. That is **new schema surface**, not a
+  registry addition — so it belongs to the version partition, and because a consumer that ignored a
+  share-alike obligation would take a derivative without the reciprocal licensing that obligation
+  exists to impose, it is the kind of new facet whose consequence must also be expressed where an
+  existing consumer can see it.
+
+Worth recording while it is in view: the registry's closing sentence — *"Adding them is a future
+registry PR, not a schema change"* — holds for the attribution licence and **does not hold for the
+share-alike one**, by the same paragraph's own reasoning, since it names a facet the schema does not
+have. The registry understates what that member costs.
 
 ## 5. The intake profile
 
