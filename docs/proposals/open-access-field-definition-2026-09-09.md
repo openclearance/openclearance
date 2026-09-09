@@ -78,7 +78,11 @@ An image can be unavailable while its record is retrievable — a source may pub
 withhold, restrict, or forbid the display of its image — and the field then carries real
 information. In the reference implementation the image field genuinely varies among accepted
 records: it is set `true` in most source adapters, `false` in two, and in one case **computed from
-the source's own per-image rights data** rather than fixed at all.
+the source's own per-image rights data** rather than fixed at all. That computed case is the
+asymmetry in live form: for one source, a record whose descriptive metadata is openly dedicated but
+whose image carries its own usage conditions is accepted **as open metadata with the image field
+`false`**, and the restricted image is then withheld. Metadata openness and image openness come
+apart there, in the reference implementation, on real records.
 
 **The metadata field has no equivalent variation.** Across the accept path it is `true` for every
 record from every source; it is `false` only on the **deny** path — where a manifest is still
@@ -114,11 +118,12 @@ is itself the finding, absence must be sayable — and here it is not. That is t
 making this field mean something, and it belongs to the version decision rather than to any
 individual producer.
 
-**One consequence today, which needs no version decision:** because the field is constant and
-unfalsifiable, **a producer must not derive it from a source signal that concerns something else.**
-Doing so cannot make the value more correct — it is `true` either way — and it creates the false
-impression that the value was substantiated. If the field is to be emitted as a constant, it should
-be emitted plainly as one.
+**One consequence today, which needs no version decision:** because the value is determined by the
+accept/deny outcome (§3.1), **a producer must not derive it from a source signal that concerns
+something else.** Doing so cannot make the value more correct — it is `true` either way for a record
+being accepted — and it creates the false impression that the value was substantiated. A value that
+follows from the outcome should be emitted as what it is, not dressed in a source field that does
+not determine it.
 
 ## 4. A general rule this makes explicit
 
