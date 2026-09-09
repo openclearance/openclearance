@@ -10,7 +10,8 @@
 manifest schema, and **neither is defined anywhere in the standard.**
 
 - In the schema they are bare booleans — `{ "type": "boolean" }` — in a block where the sibling
-  `statement` and `confidence` fields each carry a description.
+  `statement` carries a description and `confidence` carries an enumerated value set. The two
+  open-access fields carry **neither**: no description, and no constraint beyond the type.
 - In the JSON-LD context they have a term IRI and a datatype, and nothing else.
 - In the spec prose they are not mentioned.
 
@@ -36,8 +37,8 @@ with nothing in the specification to stop them.**
 > reproduced, or that it may be reused in any way.
 >
 > **`rights.metadataOpenAccess`** — the same, for the record's descriptive metadata rather than its
-> image. **See §3.1: under this definition the field is not falsifiable, and its disposition is an
-> open question rather than a settled definition.**
+> image. **See §3.1: this field's value is determined by the accept/deny outcome the clearance facets
+> already carry, so its disposition is an open question rather than a settled definition.**
 >
 > **The permission questions are answered by `clearance`**, whose facets each carry a `basis` naming
 > the rule, its inputs and its reasoning. A consumer determining whether a work may be reproduced,
@@ -68,31 +69,38 @@ clearance facets do not answer.
 **This definition changes no behaviour.** It states what the field already means, and it makes
 existing implementations correct as written rather than requiring any of them to change.
 
-### 3.1 `metadataOpenAccess` is not falsifiable, and that is a finding rather than a detail
+### 3.1 `metadataOpenAccess` carries no independent information, which is §3's argument again
 
-The availability definition holds for the image field and **fails for the metadata field**, for a
-reason worth stating rather than smoothing over.
+The availability definition holds for the image field and **does not do useful work for the metadata
+field**, for a reason worth stating rather than smoothing over.
 
 An image can be unavailable while its record is retrievable — a source may publish a record and
-withhold, restrict, or forbid the display of its image, and the field then carries real information.
-**A record's descriptive metadata cannot be unavailable in a manifest that exists**, because a
-producer only emits records it successfully retrieved. Its metadata was available by construction.
+withhold, restrict, or forbid the display of its image — and the field then carries real
+information. In the reference implementation the image field genuinely varies among accepted
+records: it is set `true` in most source adapters, `false` in two, and in one case **computed from
+the source's own per-image rights data** rather than fixed at all.
 
-This is observable in the reference implementation rather than inferred: across every source
-adapter, `metadataOpenAccess: false` appears exactly once, on the path taken when a record is
-**rejected** — that is, when no manifest is produced. **Every emitted record carries `true`, from
-every source, always.** A field that cannot be false in any document a consumer will ever see
-carries no information.
+**The metadata field has no equivalent variation.** Across the accept path it is `true` for every
+record from every source; it is `false` only on the **deny** path — where a manifest is still
+produced, carrying a total denial. So the field is **exactly collinear with the accept/deny outcome**:
+`true` on every accepted record, `false` on every denied one.
+
+**That is not a second observation. It is §3's redundancy argument reaching the metadata field.** The
+accept/deny outcome is already carried by `clearance`, whose facets state it with a rule id, its
+inputs and a written summary. `metadataOpenAccess` restates that same outcome as **a bare boolean
+with no basis** — the one shape §3 establishes the design does not permit anywhere else. The field
+does not need a better definition so much as it needs a reason to exist alongside the facets that
+already answer it.
 
 **Two dispositions are available and this document does not choose between them:**
 
-- **Deprecate it.** A required field that is constant across the entire corpus is noise in a rights
-  block, and the versioning policy already provides for deprecation without removal inside a major
-  version.
-- **Give it a meaning it can fail at** — that the source publishes the descriptive metadata under an
-  open licence or dedication. This is a licensing claim rather than an availability one, and it is
-  substantive: sources differ, and some publish reuse terms for metadata and not for images, or the
-  reverse. It cannot simply be declared, though — see §3.2.
+- **Deprecate it.** A field whose value is a function of another part of the same document adds no
+  information to a rights block, and the versioning policy already provides for deprecation without
+  removal inside a major version.
+- **Give it an independent meaning** — that the source publishes the descriptive metadata under an
+  open licence or dedication. This would be a licensing claim rather than an availability one, and it
+  is substantive: sources differ, and some publish reuse terms for metadata and not for images, or
+  the reverse. It cannot simply be declared, though — see §3.2.
 
 ### 3.2 The underlying obstacle: there is no way to say "the source does not state this"
 
@@ -181,4 +189,5 @@ with the version-partition decision and is deliberately left open.
 
 **The disposition of `metadataOpenAccess`** (§3.1) — deprecation, or redefinition with a way to
 express an unestablished state (§3.2). Both are version decisions. What this document settles is
-that the field as it stands is constant, and that no producer-level change can alter that.
+that the field as it stands adds nothing the clearance facets do not already carry, and that no
+producer-level change can alter that.
