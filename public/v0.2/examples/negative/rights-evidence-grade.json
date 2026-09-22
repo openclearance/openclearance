@@ -1,0 +1,155 @@
+{
+  "@context": [
+    "https://openclearance.org/v0.2/context.jsonld"
+  ],
+  "type": "ClearanceManifest",
+  "specVersion": "0.2",
+  "work": {
+    "id": "example:pattachitra-jagannath-18c",
+    "title": "Jagannath Trinity (Pattachitra)",
+    "artist": {
+      "name": "Unknown",
+      "attributionType": "anonymous"
+    },
+    "displayDate": "18th century",
+    "yearStart": 1700,
+    "yearEnd": 1799,
+    "medium": "Natural pigments on cloth"
+  },
+  "source": {
+    "museum": {
+      "code": "example-museum",
+      "name": "Example Museum of Art",
+      "url": "https://museum.example.org"
+    },
+    "pageUrl": "https://museum.example.org/collection/pattachitra-jagannath-18c"
+  },
+  "rights": {
+    "statement": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sourceApiValue": {
+      "field": "rights_statement",
+      "value": "CC0"
+    },
+    "imageOpenAccess": true,
+    "metadataOpenAccess": true,
+    "confidence": "high"
+  },
+  "clearance": {
+    "commercialReproduction": {
+      "permitted": true,
+      "basis": {
+        "rule": "cc0-grants-commercial",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": "https://creativecommons.org/publicdomain/zero/1.0/"
+          }
+        ],
+        "summary": "CC0 dedication grants commercial reproduction."
+      }
+    },
+    "derivatives": {
+      "permitted": true,
+      "basis": {
+        "rule": "cc0-grants-derivatives",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": "https://creativecommons.org/publicdomain/zero/1.0/"
+          }
+        ],
+        "summary": "CC0 dedication grants derivative use."
+      }
+    },
+    "attributionRequired": {
+      "required": false,
+      "basis": {
+        "rule": "cc0-waives-attribution",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": "https://creativecommons.org/publicdomain/zero/1.0/"
+          }
+        ],
+        "summary": "CC0 waives attribution as a legal requirement; citation is still provided as good practice."
+      }
+    }
+  },
+  "verification": {
+    "determinedBy": {
+      "actor": "example-museum",
+      "role": "rights-holder-institution"
+    },
+    "tool": "clearance-engine/reference",
+    "determinedAt": "2026-08-01T12:00:00Z",
+    "ruleContext": "v0.2-conformance-fixture",
+    "determinationSource": {
+      "type": "api-field",
+      "field": "rights_statement",
+      "url": "https://api.museum.example.org/works/pattachitra-jagannath-18c",
+      "retrievedAt": "2026-08-01T11:59:00Z"
+    }
+  },
+  "citation": {
+    "full": "Unknown artist, Jagannath Trinity (Pattachitra), 18th century. Example Museum of Art. CC0.",
+    "caption": "Jagannath Trinity (Pattachitra), 18th century. Example Museum of Art (CC0).",
+    "short": "Jagannath Trinity, 18th c., Example Museum of Art"
+  },
+  "designation": {
+    "marks": [
+      {
+        "scheme": "gi-india",
+        "legalBasis": "statutory-gi",
+        "name": "Orissa Pattachitra",
+        "jurisdiction": "IN",
+        "workDesignation": "claimed",
+        "producerClaim": {
+          "claimsAuthorisation": "not-applicable"
+        },
+        "declaredBy": {
+          "actor": "example-museum",
+          "role": "curatorial-record"
+        },
+        "declaredAt": "2026-08-01T12:00:00Z"
+      }
+    ],
+    "productNaming": {
+      "protectedNameUsePermitted": false,
+      "basis": {
+        "rule": "mark-not-applicable-historical",
+        "inputs": [
+          {
+            "field": "designation.marks.0.producerClaim.claimsAuthorisation",
+            "value": "not-applicable"
+          }
+        ],
+        "summary": "The maker predates the geographical-indication scheme; a derived product is not designated by the protected name. This verdict rests on the declared record and is not verified by OpenClearance."
+      },
+      "permittedDescriptor": "Fine-art print reproducing a Pattachitra painting (Odisha, 18th century), after the original held by the Example Museum of Art.",
+      "jurisdiction": "IN"
+    }
+  },
+  "evidence": [
+    {
+      "id": "ev-1",
+      "type": "document",
+      "supports": "/designation/marks/0",
+      "mediaType": "application/pdf",
+      "byteSize": 482133,
+      "integrity": {
+        "alg": "sha-256",
+        "hash": "9f2b4d1c8a7e6f5d4c3b2a1908f7e6d5c4b3a291807f6e5d4c3b2a19f8e7d6c5"
+      },
+      "locator": [
+        "https://museum.example.org/records/pattachitra-jagannath-18c/catalogue.pdf"
+      ],
+      "capturedAt": "2026-07-15T09:30:00Z",
+      "declaredBy": {
+        "actor": "example-museum",
+        "role": "curatorial-record"
+      },
+      "caption": "Catalogue record identifying the work as Orissa Pattachitra.",
+      "evidenceGrade": "strong"
+    }
+  ]
+}

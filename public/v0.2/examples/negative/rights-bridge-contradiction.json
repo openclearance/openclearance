@@ -1,0 +1,106 @@
+{
+  "@context": [
+    "https://openclearance.org/v0.1/context.jsonld"
+  ],
+  "type": "ClearanceManifest",
+  "specVersion": "0.1",
+  "work": {
+    "id": "example:member-work-3",
+    "title": "Untitled",
+    "artist": {
+      "name": "Third Example Artist",
+      "attributionType": "named"
+    },
+    "displayDate": "2025",
+    "yearStart": 2025,
+    "yearEnd": 2025,
+    "medium": "Oil on canvas"
+  },
+  "source": {
+    "museum": {
+      "code": "artist-direct",
+      "name": "Artist-submitted record"
+    }
+  },
+  "rights": {
+    "statement": null,
+    "sourceApiValue": null,
+    "imageOpenAccess": false,
+    "metadataOpenAccess": true,
+    "confidence": "high"
+  },
+  "clearance": {
+    "commercialReproduction": {
+      "permitted": true,
+      "basis": {
+        "rule": "cc0-grants-commercial",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": "https://creativecommons.org/publicdomain/zero/1.0/"
+          }
+        ],
+        "summary": "Claims a grant the extension itself records as assigned to the collecting society."
+      }
+    },
+    "derivatives": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No open rights statement applies; derivative use is not cleared."
+      }
+    },
+    "attributionRequired": {
+      "required": true,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No waiver applies; attribution is required."
+      }
+    }
+  },
+  "verification": {
+    "determinedBy": {
+      "actor": "Third Example Artist",
+      "role": "artist"
+    },
+    "tool": "clearance-engine/reference",
+    "determinedAt": "2026-08-01T12:00:00Z",
+    "ruleContext": "v0.2-conformance-fixture",
+    "determinationSource": {
+      "type": "rights-gate-default",
+      "retrievedAt": "2026-08-01T11:59:00Z"
+    }
+  },
+  "citation": {
+    "full": "Third Example Artist, Untitled, 2025. Artist-submitted record. All rights reserved.",
+    "caption": "Third Example Artist, Untitled, 2025.",
+    "short": "Third Example Artist, Untitled, 2025"
+  },
+  "extensions": {
+    "https://openclearance.org/v0.2/": {
+      "grantAuthority": {
+        "collectingSociety": {
+          "society": "prolitteris",
+          "assignedCategories": [
+            "commercial-reproduction"
+          ],
+          "verification": {
+            "method": "manual-link-out"
+          }
+        }
+      }
+    }
+  }
+}
