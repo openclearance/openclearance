@@ -57,13 +57,15 @@ If you've found a real bug in the spec (a JSON Schema that doesn't match the pro
 ```
 git clone https://github.com/openclearance/openclearance
 cd openclearance
+nvm use               # the Node version pinned in .nvmrc
 npm install
+npm run node-floor    # the pinned Node satisfies every dependency's engines.node
 npm run conformance   # validate the published v0.1 artifacts
 npm run dev           # local dev server for the site
 npm run build         # static build to dist/
 ```
 
-`npm run build` must succeed before any change ships. `npm run conformance` is the published-artifact gate and runs in CI on every push and pull request that touches the spec artifacts or the check itself.
+`npm run build` must succeed before any change ships. `npm run conformance` is the published-artifact gate and runs in CI on every push and pull request that touches the spec artifacts or the check itself. CI also runs `npm run node-floor`, which fails when a dependency change raises the required Node version above the one pinned in `.nvmrc`; the fix is to raise the pin in the same change.
 
 ## Deploying openclearance.org
 
