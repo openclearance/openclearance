@@ -74,6 +74,17 @@ This is a public repository, so by design it holds **no Cloudflare API token and
 
 So the publish flow is: open a PR, get it reviewed and merged, then `git pull` on `main` (or run `npm run deploy`). The CF token never leaves the operator's machine.
 
+## Commit identity and messages
+
+Commit messages and PR descriptions in this repository are part of the standard's public record, so they describe each change and its reason on the merits.
+
+Pull requests opened by the maintainer account or by Dependabot are also checked in CI (`scripts/check-public-text.mjs`):
+
+- every commit in the PR is authored and committed by one of the project's identities (the project address, the maintainer's GitHub web-UI address, or Dependabot's; GitHub may be the committer);
+- no commit message or PR description carries a co-author trailer, or a coding-session trailer or link.
+
+The check does not apply to pull requests from other contributors. Your commits keep your own identity, and co-author trailers are welcome.
+
 ## Code style
 
 - Spec and site prose: editorial, restrained, technical. No marketing language. Do not use em-dashes or en-dashes; use colons, commas, or parentheses instead. `→` is the only special glyph used in copy. Rights language stays non-absolute ("helps establish", "supports"), never an absolute guarantee. Match the existing voice.
