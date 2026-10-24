@@ -36,7 +36,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "grantAuthority.collectingSociety.assignedCategories",
+            "field": "/grantAuthority/collectingSociety/assignedCategories",
             "value": [
               "unknown"
             ]
@@ -51,7 +51,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": null
           }
         ],
@@ -64,7 +64,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": null
           }
         ],

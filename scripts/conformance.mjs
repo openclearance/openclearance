@@ -408,23 +408,32 @@ for (const file of negFiles) {
 //    cannot express are enforced by the reference consistency check below; a
 //    manifest violating one is inconsistent and a conforming verifier MUST treat
 //    it as REJECTED:
+//      - single carriage: the blocks live at the top level or in the v0.1
+//        `extensions` bridge, never both; every rule below runs on one
+//        normalised view of the manifest;
 //      - the authority gate: a right assigned to a collecting society (or of
 //        unconfirmed scope) must read false in the v0.1-visible clearance boolean
-//        itself, including when the block rides the v0.1 `extensions` bridge;
-//      - the designation input ban: no clearance facet's basis.inputs may cite a
-//        designation path (a designation constrains what a product may be NAMED,
+//        itself, including when the block rides the bridge;
+//      - the designation input ban: no clearance facet's basis.inputs may cite
+//        designation (a designation constrains what a product may be NAMED,
 //        never whether a work may be reproduced);
 //      - the evidence input ban: no basis.inputs anywhere may cite an evidence
 //        item (evidence exists for a human; it never changes a verdict);
+//        both bans apply to what a field denotes under every recognised reading
+//        (pointer, fragment, dotted or bracketed path, either carriage);
 //      - evidence-pointer resolution: every evidence[].supports JSON Pointer
 //        (RFC 6901) must resolve to a node in the manifest;
 //      - the protected-name guard: productNaming.protectedNameUsePermitted may be
 //        true only on a mark self-claimed as both of-the-class and authorised,
-//        under a confirmed legal basis (never voluntary-code, never unknown).
+//        under a confirmed legal basis (never voluntary-code, never unknown), in
+//        the same jurisdiction as the naming verdict;
+//      - jurisdiction coherence J-1..J-5, including at most one entry per facet
+//        and jurisdiction.
 //    Deliberately NOT checked: locator liveness (a dead evidence locator changes
-//    nothing and this harness performs no network fetch by design), and the
-//    consumer-side duties that have no single-manifest observable (territorial
-//    scoping of the naming verdict; treating an absent block as no finding).
+//    nothing and this harness performs no network fetch by design), prose
+//    requirements on basis.summary, and the consumer-side duties that have no
+//    single-manifest observable (how a consumer outside the naming verdict's
+//    jurisdiction acts; treating an absent block as no finding).
 // ---------------------------------------------------------------------------
 console.log("");
 console.log("v0.2 rights vocabulary");
@@ -495,17 +504,71 @@ function resolvePointer(doc, pointer) {
 }
 
 // The v0.1-safe bridge: a v0.1 manifest carries the v0.2 blocks inside
-// `extensions` under the v0.2 namespace key. The consistency check reads the
-// blocks from either home, so the bridge cannot dodge the gate.
+// `extensions` under the v0.2 namespace key. A manifest uses exactly one home
+// for the blocks; carrying blocks in both is inconsistent, because a consumer
+// reading one home would see a different manifest from a consumer reading the
+// other. The manifest is normalised once (blocks hoisted to the top level) and
+// every rule runs on that single view, so the bridge cannot dodge any gate.
 const V02_EXTENSION_KEY = "https://openclearance.org/v0.2/";
-function v02Blocks(manifest) {
-  const ext = manifest.extensions?.[V02_EXTENSION_KEY] ?? {};
-  return {
-    grantAuthority: manifest.grantAuthority ?? ext.grantAuthority,
-    designation: manifest.designation ?? ext.designation,
-    evidence: manifest.evidence ?? ext.evidence,
-    jurisdictionAssessments: manifest.jurisdictionAssessments ?? ext.jurisdictionAssessments,
-  };
+const V02_BLOCK_NAMES = ["grantAuthority", "designation", "evidence", "jurisdictionAssessments"];
+function normaliseV02(manifest) {
+  const ext = manifest.extensions?.[V02_EXTENSION_KEY];
+  const bridge = ext !== null && typeof ext === "object" && !Array.isArray(ext) ? ext : {};
+  const atTop = V02_BLOCK_NAMES.filter((name) => manifest[name] !== undefined);
+  const inBridge = V02_BLOCK_NAMES.filter((name) => bridge[name] !== undefined);
+  const view = { ...manifest };
+  if (atTop.length === 0) {
+    for (const name of inBridge) view[name] = bridge[name];
+  }
+  return { view, atTop, inBridge };
+}
+
+// Path tokens a basis input's `field` denotes, under every reading a verifier
+// recognises: an RFC 6901 pointer ('/a/b', the normative form for a manifest
+// node), its URI-fragment form ('#/a/b'), and the dotted/bracketed reading
+// ('a.b.0', 'a[0]'). Bans are applied to what a field denotes, never to how it
+// is spelled; a leading bridge prefix is removed so both carriages compare alike.
+function fieldReadings(field) {
+  const readings = [];
+  const pointerTokens = (p) => p.slice(1).split("/").map((t) => t.replace(/~1/g, "/").replace(/~0/g, "~"));
+  if (field.startsWith("/")) {
+    readings.push(pointerTokens(field));
+  } else if (field.startsWith("#")) {
+    let decoded = null;
+    try {
+      decoded = decodeURIComponent(field.slice(1));
+    } catch {
+      decoded = null;
+    }
+    if (decoded === "") readings.push([]);
+    else if (decoded?.startsWith("/")) readings.push(pointerTokens(decoded));
+  } else {
+    const bridgePrefix = `extensions.${V02_EXTENSION_KEY}`;
+    let head = [];
+    let rest = field;
+    if (field === bridgePrefix || field.startsWith(`${bridgePrefix}.`) || field.startsWith(`${bridgePrefix}[`)) {
+      head = ["extensions", V02_EXTENSION_KEY];
+      rest = field.slice(bridgePrefix.length);
+    }
+    readings.push([...head, ...rest.split(/[.[\]]/).filter((t) => t !== "")]);
+  }
+  return readings.map((tokens) =>
+    tokens[0] === "extensions" && tokens[1] === V02_EXTENSION_KEY ? { tokens: tokens.slice(2), bridged: true } : { tokens, bridged: false }
+  );
+}
+
+// True when an input cites the named block: the field addresses the block, a
+// node inside it, or a container holding it (the manifest root, `extensions`,
+// or the bridge object), in either carriage.
+function citesBlock(inputs, block) {
+  return (inputs ?? []).some((input) => {
+    if (typeof input?.field !== "string") return false;
+    return fieldReadings(input.field).some(({ tokens, bridged }) => {
+      if (tokens.length === 0) return true;
+      if (tokens[0] === block) return true;
+      return !bridged && tokens.length === 1 && tokens[0] === "extensions";
+    });
+  });
 }
 
 const CONFIRMED_LEGAL_BASES = new Set([
@@ -518,10 +581,19 @@ const CONFIRMED_LEGAL_BASES = new Set([
 // problem means the manifest is inconsistent and MUST be treated as REJECTED.
 function checkV02Consistency(manifest) {
   const problems = [];
-  const { grantAuthority, designation, evidence, jurisdictionAssessments } = v02Blocks(manifest);
+  const { view, atTop, inBridge } = normaliseV02(manifest);
+  const { grantAuthority, designation, evidence, jurisdictionAssessments } = view;
+
+  // One home: v0.2 blocks at the top level and in the bridge at once is inconsistent.
+  if (atTop.length > 0 && inBridge.length > 0) {
+    problems.push(
+      `v0.2 blocks are carried both at the top level (${atTop.join(", ")}) and in the extensions bridge (${inBridge.join(", ")}); a manifest uses exactly one home`
+    );
+  }
 
   // Authority gate: assigned-away (or unconfirmed) rights must already read
-  // false in the v0.1-visible clearance boolean.
+  // false in the v0.1-visible clearance boolean. 'unknown' leaves the holder of
+  // every assignable right unconfirmed, so it gates both facets.
   const cats = grantAuthority?.collectingSociety?.assignedCategories ?? [];
   const gated = [];
   if (cats.includes("commercial-reproduction") || cats.includes("reproduction-all")) {
@@ -537,37 +609,35 @@ function checkV02Consistency(manifest) {
       );
     }
   }
-  if (cats.includes("unknown") && manifest.clearance?.commercialReproduction?.permitted === true) {
-    problems.push(
-      "clearance.commercialReproduction.permitted is true while the collecting-society assignment scope is unconfirmed"
-    );
+  if (cats.includes("unknown")) {
+    for (const facet of ["commercialReproduction", "derivatives"]) {
+      if (manifest.clearance?.[facet]?.permitted === true) {
+        problems.push(
+          `clearance.${facet}.permitted is true while the collecting-society assignment scope is unconfirmed`
+        );
+      }
+    }
   }
 
-  // Input bans: clearance bases may cite neither designation nor evidence paths;
+  // Input bans: clearance bases may cite neither designation nor evidence;
   // the naming basis may not cite evidence.
-  const cites = (inputs, prefix) =>
-    (inputs ?? []).some(
-      (i) =>
-        typeof i?.field === "string" &&
-        (i.field === prefix || i.field.startsWith(`${prefix}.`) || i.field.startsWith(`/${prefix}`))
-    );
   for (const facet of CLEARANCE_FACETS) {
     const inputs = manifest.clearance?.[facet]?.basis?.inputs;
-    if (cites(inputs, "designation")) {
+    if (citesBlock(inputs, "designation")) {
       problems.push(`clearance.${facet}.basis.inputs cites a designation path`);
     }
-    if (cites(inputs, "evidence")) {
+    if (citesBlock(inputs, "evidence")) {
       problems.push(`clearance.${facet}.basis.inputs cites an evidence item`);
     }
   }
-  if (cites(designation?.productNaming?.basis?.inputs, "evidence")) {
+  if (citesBlock(designation?.productNaming?.basis?.inputs, "evidence")) {
     problems.push("designation.productNaming.basis.inputs cites an evidence item");
   }
   (jurisdictionAssessments ?? []).forEach((entry, idx) => {
-    if (cites(entry?.basis?.inputs, "designation")) {
+    if (citesBlock(entry?.basis?.inputs, "designation")) {
       problems.push(`jurisdictionAssessments[${idx}].basis.inputs cites a designation path`);
     }
-    if (cites(entry?.basis?.inputs, "evidence")) {
+    if (citesBlock(entry?.basis?.inputs, "evidence")) {
       problems.push(`jurisdictionAssessments[${idx}].basis.inputs cites an evidence item`);
     }
   });
@@ -590,6 +660,16 @@ function checkV02Consistency(manifest) {
             `jurisdictionAssessments[${idx}] assesses '${entry?.jurisdiction}', which is outside the asserted scope`
           );
         }
+      }
+      const seen = new Set();
+      for (const [idx, entry] of entries.entries()) {
+        const key = `${entry?.facet}|${entry?.jurisdiction}`;
+        if (seen.has(key)) {
+          problems.push(
+            `jurisdictionAssessments[${idx}] repeats ${entry?.facet} for '${entry?.jurisdiction}'; each facet has at most one entry per jurisdiction`
+          );
+        }
+        seen.add(key);
       }
       const byFacet = new Map();
       for (const entry of entries) {
@@ -625,33 +705,31 @@ function checkV02Consistency(manifest) {
     }
   }
 
-  // Evidence pointers must resolve. Bridge-carried blocks are hoisted so a
-  // pointer such as /designation/marks/0 resolves in either carriage.
-  const resolutionDoc = { ...manifest };
-  if (grantAuthority !== undefined) resolutionDoc.grantAuthority = grantAuthority;
-  if (designation !== undefined) resolutionDoc.designation = designation;
-  if (evidence !== undefined) resolutionDoc.evidence = evidence;
-  if (jurisdictionAssessments !== undefined) resolutionDoc.jurisdictionAssessments = jurisdictionAssessments;
+  // Evidence pointers must resolve. They resolve against the normalised view,
+  // so a pointer such as /designation/marks/0 resolves in either carriage.
   (evidence ?? []).forEach((item, idx) => {
-    if (resolvePointer(resolutionDoc, item?.supports) === undefined) {
+    if (resolvePointer(view, item?.supports) === undefined) {
       problems.push(`evidence[${idx}].supports ('${item?.supports}') does not resolve to any node`);
     }
   });
 
   // Protected-name guard: `true` requires a qualifying self-attested claim on a
-  // confirmed legal basis. 'registered' (a self-claimed register entry) and
-  // 'claimed' (self-claimed authorisation without one) both qualify; badge
-  // display on a consuming surface is a stricter, display-side matter.
+  // confirmed legal basis, in the jurisdiction the naming verdict is scoped to
+  // (a designation right is territorial and does not travel). 'registered' (a
+  // self-claimed register entry) and 'claimed' (self-claimed authorisation
+  // without one) both qualify; badge display on a consuming surface is a
+  // stricter, display-side matter.
   if (designation?.productNaming?.protectedNameUsePermitted === true) {
     const qualifies = (designation.marks ?? []).some(
       (m) =>
         m?.workDesignation === "claimed" &&
         ["registered", "claimed"].includes(m?.producerClaim?.claimsAuthorisation) &&
-        CONFIRMED_LEGAL_BASES.has(m?.legalBasis)
+        CONFIRMED_LEGAL_BASES.has(m?.legalBasis) &&
+        m?.jurisdiction === designation.productNaming.jurisdiction
     );
     if (!qualifies) {
       problems.push(
-        "productNaming.protectedNameUsePermitted is true without a mark self-claimed as of-the-class and authorised under a confirmed legal basis"
+        `productNaming.protectedNameUsePermitted is true without a mark in '${designation.productNaming.jurisdiction}' self-claimed as of-the-class and authorised under a confirmed legal basis`
       );
     }
   }
@@ -735,18 +813,20 @@ if (ctx2Loaded?.json) {
 // --- Fixture vectors ---
 // schema: "0.2" | "0.1" (which manifest schema the fixture must validate against;
 //   the bridge fixture is a v0.1 manifest). valid: expected schema outcome.
-// verdict: "ok" | "rejected" for schema-valid fixtures. extra: named follow-on checks.
+// verdict: "ok" | "rejected" for schema-valid fixtures. reason: text the expected
+//   problem contains, so a rejected vector fails for the rule it exists to test.
+// extra: named follow-on checks.
 const V02_VECTORS = {
   "rights-society-assigned-deny.json": { schema: "0.2", valid: true, verdict: "ok", extra: "assigned-deny" },
   "rights-society-none.json": { schema: "0.2", valid: true, verdict: "ok" },
   "rights-society-unknown-deny.json": { schema: "0.2", valid: true, verdict: "ok", extra: "unknown-deny" },
   "rights-designation-historical-cc0.json": { schema: "0.2", valid: true, verdict: "ok", extra: "historical" },
   "rights-designation-self-attested.json": { schema: "0.2", valid: true, verdict: "ok", extra: "self-attested" },
-  "negative/rights-bridge-contradiction.json": { schema: "0.1", valid: true, verdict: "rejected" },
-  "negative/rights-designation-cited-input.json": { schema: "0.2", valid: true, verdict: "rejected" },
-  "negative/rights-evidence-cited-input.json": { schema: "0.2", valid: true, verdict: "rejected" },
-  "negative/rights-supports-unresolved.json": { schema: "0.2", valid: true, verdict: "rejected" },
-  "negative/rights-naming-unconfirmed-basis.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  "negative/rights-bridge-contradiction.json": { schema: "0.1", valid: true, verdict: "rejected", reason: "assigned to a collecting society" },
+  "negative/rights-designation-cited-input.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "cites a designation path" },
+  "negative/rights-evidence-cited-input.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "cites an evidence item" },
+  "negative/rights-supports-unresolved.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "does not resolve to any node" },
+  "negative/rights-naming-unconfirmed-basis.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "protectedNameUsePermitted is true without a mark" },
   "negative/rights-sentinel-mix.json": { schema: "0.2", valid: false },
   "negative/rights-sentinel-unknown-none.json": { schema: "0.2", valid: false },
   "negative/rights-scheme-basis-mismatch.json": { schema: "0.2", valid: false },
@@ -756,9 +836,16 @@ const V02_VECTORS = {
   "negative/rights-mark-verification-field.json": { schema: "0.2", valid: false },
   "negative/rights-jurisdictions-bad-scope.json": { schema: "0.2", valid: false },
   "rights-jurisdiction-divergence.json": { schema: "0.2", valid: true, verdict: "ok", extra: "divergence" },
-  "negative/rights-jurisdiction-core-overgrant.json": { schema: "0.2", valid: true, verdict: "rejected" },
-  "negative/rights-jurisdiction-partial-matrix.json": { schema: "0.2", valid: true, verdict: "rejected" },
-  "negative/rights-jurisdiction-under-worldwide.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  "negative/rights-jurisdiction-core-overgrant.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "fail-closed conjunction" },
+  "negative/rights-jurisdiction-partial-matrix.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "do not cover the full asserted scope" },
+  "negative/rights-jurisdiction-under-worldwide.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "under a 'worldwide' scope" },
+  "negative/rights-dual-carriage.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "carried both at the top level" },
+  "negative/rights-designation-cited-bridge-dotted.json": { schema: "0.1", valid: true, verdict: "rejected", reason: "commercialReproduction.basis.inputs cites a designation path" },
+  "negative/rights-designation-cited-bridge-pointer.json": { schema: "0.1", valid: true, verdict: "rejected", reason: "commercialReproduction.basis.inputs cites a designation path" },
+  "negative/rights-naming-wrong-territory.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "without a mark in 'US'" },
+  "negative/rights-jurisdiction-duplicate-entry.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "repeats commercialReproduction for 'EU'" },
+  "negative/rights-jurisdictions-worldwide-mixed.json": { schema: "0.2", valid: false },
+  "negative/rights-society-unknown-derivatives.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "derivatives.permitted is true while the collecting-society assignment scope is unconfirmed" },
 };
 
 for (const [rel, expect] of Object.entries(V02_VECTORS)) {
@@ -786,8 +873,11 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
 
   const problems = checkV02Consistency(manifest);
   if (expect.verdict === "rejected") {
-    if (problems.length > 0) {
-      pass(`${rel} is correctly REJECTED as inconsistent (${problems[0]})`);
+    const matched = problems.find((p) => p.includes(expect.reason));
+    if (matched) {
+      pass(`${rel} is correctly REJECTED as inconsistent (${matched})`);
+    } else if (problems.length > 0) {
+      fail(`${rel} was REJECTED, but not for the expected reason '${expect.reason}': ${problems.join("; ")}`);
     } else {
       fail(`${rel} was expected to be REJECTED but the consistency check found no problem`);
     }
@@ -878,6 +968,56 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       pass(`${rel} carries a registered-user claim with its register ref and evidence at the claim node`);
     } else {
       fail(`${rel} must claim 'registered' with authorisedUserRef and evidence supporting the producer claim`);
+    }
+  }
+}
+
+// --- v0.2 input bans apply to what a field denotes, not how it is spelled ---
+// Each spelling is added as a clearance input to a known-good manifest. A
+// spelling that reaches designation or evidence (in either carriage, or a
+// container holding them) must be rejected; fields that name a source-record
+// field or another manifest node must not be.
+{
+  const loaded = readJson(join(v02Dir, "examples", "rights-designation-historical-cc0.json"));
+  if (loaded) {
+    const bridge = `/extensions/${V02_EXTENSION_KEY.replace(/~/g, "~0").replace(/\//g, "~1")}`;
+    const spellings = [
+      ["/designation/marks/0/name", "designation"],
+      ["#/designation/marks/0", "designation"],
+      ["#%2Fdesignation%2Fmarks%2F0", "designation"],
+      ["designation.marks.0.name", "designation"],
+      ["designation[0]", "designation"],
+      ["designation", "designation"],
+      [`${bridge}/designation/marks/0`, "designation"],
+      [`extensions.${V02_EXTENSION_KEY}.designation.marks.0`, "designation"],
+      [`extensions.${V02_EXTENSION_KEY}[designation]`, "designation"],
+      [bridge, "designation"],
+      ["extensions", "designation"],
+      ["#", "designation"],
+      ["/evidence/0/id", "evidence"],
+      ["evidence[0].id", "evidence"],
+      [`${bridge}/evidence/0`, "evidence"],
+      ["/rights/statement", null],
+      ["rights_statement", null],
+      ["license.type", null],
+      ["designationNote", null],
+    ];
+    for (const [field, block] of spellings) {
+      const manifest = JSON.parse(JSON.stringify(loaded.json));
+      manifest.clearance.commercialReproduction.basis.inputs.push({ field, value: null });
+      const problems = checkV02Consistency(manifest);
+      const expected = `clearance.commercialReproduction.basis.inputs cites ${block === "evidence" ? "an evidence item" : "a designation path"}`;
+      if (block === null) {
+        if (problems.length === 0) {
+          pass(`input field '${field}' does not cite designation or evidence`);
+        } else {
+          fail(`input field '${field}' wrongly rejected: ${problems.join("; ")}`);
+        }
+      } else if (problems.includes(expected)) {
+        pass(`input field '${field}' is rejected as citing ${block}`);
+      } else {
+        fail(`input field '${field}' must be rejected as citing ${block} (found: ${problems.join("; ") || "no problem"})`);
+      }
     }
   }
 }

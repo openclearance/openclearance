@@ -36,7 +36,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": null
           }
         ],
@@ -49,7 +49,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": null
           }
         ],
@@ -62,7 +62,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": null
           }
         ],
@@ -114,15 +114,15 @@
         "rule": "self-attested-authorised-user",
         "inputs": [
           {
-            "field": "designation.marks.0.workDesignation",
+            "field": "/designation/marks/0/workDesignation",
             "value": "claimed"
           },
           {
-            "field": "designation.marks.0.producerClaim.claimsAuthorisation",
+            "field": "/designation/marks/0/producerClaim/claimsAuthorisation",
             "value": "registered"
           },
           {
-            "field": "designation.marks.0.legalBasis",
+            "field": "/designation/marks/0/legalBasis",
             "value": "statutory-gi"
           }
         ],

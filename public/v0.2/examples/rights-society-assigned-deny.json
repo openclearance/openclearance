@@ -36,11 +36,11 @@
         "rule": "right-assigned-to-collecting-society",
         "inputs": [
           {
-            "field": "grantAuthority.collectingSociety.society",
+            "field": "/grantAuthority/collectingSociety/society",
             "value": "prolitteris"
           },
           {
-            "field": "grantAuthority.collectingSociety.assignedCategories",
+            "field": "/grantAuthority/collectingSociety/assignedCategories",
             "value": [
               "commercial-reproduction"
             ]
@@ -55,7 +55,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": null
           }
         ],
@@ -68,7 +68,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": null
           }
         ],
