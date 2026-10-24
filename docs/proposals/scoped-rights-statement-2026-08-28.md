@@ -32,10 +32,10 @@ manifest told them they could.
    confidence claims more than the source said.
 3. **The divergent half cannot be resolved to a canonical licence URI from the source's own
    metadata.** The machine-readable licence links carry only the CC0 URI; the attribution licence
-   appears in prose alone, and that prose names a licence version and jurisdiction combination that
-   does not exist. **Resolving it to a URI would mean inventing one** — upgrading the source's
-   ambiguity into the manifest's certainty. Any model for carried third-party terms must therefore
-   be able to hold an **unresolvable** statement verbatim.
+   appears in prose alone, and nothing in the source's machine-readable metadata maps that prose to
+   a single canonical licence URI. **Resolving it to a URI would mean inventing one** — upgrading
+   the source's ambiguity into the manifest's certainty. Any model for carried third-party terms
+   must therefore be able to hold an **unresolvable** statement verbatim.
 
 **Today the honest handling is to fence the field: do not carry text whose terms the manifest
 cannot state.** That is correct now and wrong as a destination — the interpretive layer is
@@ -44,11 +44,13 @@ possible.
 
 ## 2. What the manifest already assumes, precisely
 
-v0.1 does **not** assume a record has one licence. It already carries independent open-access
-positions for images and for metadata, so **divergence at asset-class granularity is first-class.**
-What it assumes is uniformity *within* an asset class — and the case above breaks exactly that:
-divergence *inside* the metadata class, with a single unscoped record-level statement as the place
-the flattening happens.
+v0.1 carries separate open-access fields for images and for metadata, so its shape already
+distinguishes the two asset classes. Those fields do not, however, state a permission position for
+each class: a companion proposal, the open-access field definition, defines them as **availability
+signals, not rights determinations**, and that definition is not yet decided. What v0.1 does assume
+is that **one record-level rights statement** describes the whole record — and the case above
+breaks exactly that: divergence *inside* the metadata, with a single unscoped record-level
+statement as the place the flattening happens.
 
 **A conforming v0.1 manifest cannot carry the text at all** — the work block is closed and has no
 description field. So there is no v0.1 defect to fix here and no published document is wrong. This
@@ -57,18 +59,23 @@ is a proposal about what becomes expressible next, and the rule it establishes m
 
 ## 3. Axis placement (this is not a new axis)
 
-The house test is an element's relationship to `clearance`. A scoped statement does not gate a
+The test this standard applies is an element's relationship to `clearance`. A scoped statement does not gate a
 facet closed, does not govern naming, and does not feed a determination. It answers *may this be
 reused, and on what terms* — the **permission** question — about a **different subject**: a carried
 field rather than the work.
 
-So this is **not a new axis; it is a third granularity of the existing one.**
+So this is **not a new axis; it is a finer granularity of the existing one.**
 
 | Granularity | Field | Subject |
 |---|---|---|
 | Record | `rights.statement` | the whole manifest's position |
-| Asset class | `rights.imageOpenAccess` / `rights.metadataOpenAccess` | images vs. metadata |
 | **Node** | **this element** | **one named field inside the record** |
+
+`rights.imageOpenAccess` and `rights.metadataOpenAccess` are deliberately absent from this table.
+They distinguish images from metadata, but under the open-access field definition proposal they are
+availability signals rather than permission positions, and so sit outside the permission axis. If
+that definition were not adopted, they would form an asset-class row between these two. Nothing in
+S-1..S-9 depends on which way it is decided.
 
 Stating this matters practically: an element that looked like a new axis would invite a parallel
 set of determination rules and a second adjudication path. There is none. A scoped statement
@@ -141,7 +148,7 @@ carries terms and points at what they govern.
       "uri": "https://creativecommons.org/licenses/by/4.0/",
       "text": "…the source's own wording, verbatim…"
     },
-    "readFrom": { "field": "info.license_text", "value": "…" }   // S-6
+    "readFrom": { "field": "<source field path>", "value": "…" }   // S-6
   }
 ]
 ```
