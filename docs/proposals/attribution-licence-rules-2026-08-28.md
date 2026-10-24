@@ -81,7 +81,7 @@ Three consequences follow, and each changes a rule below:
   No field may state that attribution has been satisfied, and no surface may present it that way.
   Whether a given reuse complies is the reuser's determination, on facts the manifest does not have.
 
-- **B-3 — Where a required notice has no field, the source pointer is what discharges it, and it
+- **B-3 — Where a supplied notice has no field, the source pointer is what discharges it, and it
   therefore becomes required.** Two of the conditional elements — a copyright notice and a
   disclaimer notice — have **no home in the manifest**. §3(a)(2) supplies the answer the standard
   should use rather than inventing one: the conditions may be satisfied by a URI to a resource
