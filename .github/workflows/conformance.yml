@@ -9,6 +9,7 @@ on:
       - "scripts/**"
       - "package.json"
       - "package-lock.json"
+      - ".nvmrc"
       - "astro.config.mjs"
       - ".github/workflows/conformance.yml"
   pull_request:
@@ -18,6 +19,7 @@ on:
       - "scripts/**"
       - "package.json"
       - "package-lock.json"
+      - ".nvmrc"
       - "astro.config.mjs"
       - ".github/workflows/conformance.yml"
 
@@ -34,6 +36,9 @@ jobs:
 
       - name: Install deps
         run: npm ci
+
+      - name: Check the pinned Node version satisfies every engines.node in the lockfile
+        run: npm run node-floor
 
       - name: Run Clearance Manifest v0.1 conformance check
         run: npm run conformance
