@@ -1,4 +1,4 @@
-# Registry addition — Baseline rules for the attribution licence (CC BY 4.0)
+# Registry addition: baseline rules for the attribution licence (CC BY 4.0)
 
 **Date:** 2026-08-28 · **Target:** rule registry (open set; no schema change) · v0.1 FROZEN
 
@@ -7,31 +7,31 @@
 ## 1. What this widens
 
 Every rule in the published registry covers a licence that imposes **no condition on reuse**: CC0
-and the Public Domain Mark grant everything and waive attribution. Everything else — including CC BY
-4.0, a widely used licence on open-access cultural material — resolves to
+and the Public Domain Mark grant everything and waive attribution. Everything else (including CC BY
+4.0, a widely used licence on open-access cultural material) resolves to
 `default-deny`: every facet `false`, `confidence: low`.
 
 That is honest, and it is a real limit. A work under an attribution licence **is** cleared for
 commercial reproduction and for derivatives; it simply carries a condition. Declining to model the
 condition means declining to clear the work at all, so the standard currently under-reports the
 rights position of a large part of the corpus it exists to describe. Over-restriction is not the
-safe side — it is the mirror-image error, and it is the one being made here.
+safe side: it is the mirror-image error, and it is the one being made here.
 
 The registry gives its own reason for the omission: these licences need `attributionRequired: true`
 **with a specific credit string**, and a `shareAlikeRequired` facet, neither modelled by the v0.1
 truth tables. **That reason now holds for only one of the two members.** The credit string exists,
 and the requirement that it be present exactly when the obligation is asserted is established in
 the artist-direct-grant proposal. The share-alike member's blocker is untouched and is **not** a
-registry matter at all — see §8.
+registry matter at all (see §8).
 
 **This proposal covers the attribution licence only, and only version 4.0.**
 
 ## 2. What the licence actually requires
 
 Quoted from the licence text rather than summarised, because the structure of the obligation is
-what determines the design — and it is not the flat "give credit" it is usually read as.
+what determines the design, and it is not the flat "give credit" it is usually read as.
 
-**Conditional — required only "if it is supplied by the Licensor with the Licensed Material"**
+**Conditional: required only "if it is supplied by the Licensor with the Licensed Material"**
 (§3(a)(1)(A)): identification of the creator(s) and any others designated to receive attribution;
 a copyright notice; a notice referring to the licence; a notice referring to the disclaimer of
 warranties; and a URI or hyperlink to the material.
@@ -41,7 +41,7 @@ indication of previous modifications; and **"indicate the Licensed Material is l
 Public License, and include the text of, or the URI or hyperlink to, this Public License."**
 
 **Satisfiable by pointer** (§3(a)(2)): the conditions may be met "in any reasonable manner based on
-the medium, means, and context", and the licence gives its own example — "providing a URI or
+the medium, means, and context", and the licence gives its own example: "providing a URI or
 hyperlink to a resource that includes the required information."
 
 **Revocable in part** (§3(a)(3)): "If requested by the Licensor, You must remove any of the
@@ -68,56 +68,56 @@ Three consequences follow, and each changes a rule below:
 
 ## 4. Normative rules
 
-- **B-1 — The licence identification is mandatory, and it is machine-checkable.** §3(a)(1)(C) is
+- **B-1. The licence identification is mandatory, and it is machine-checkable.** §3(a)(1)(C) is
   not conditioned on what the licensor supplied. A manifest whose determination cites an
   attribution-licence rule MUST carry the licence URI in `rights.statement`. **This is the element
-  a free-text credit string cannot guarantee** — a citation line naming artist, title and museum,
+  a free-text credit string cannot guarantee**: a citation line naming artist, title and museum,
   with no licence identified, satisfies a "credit is present" test and fails the licence's one
   unconditional condition.
 
-- **B-2 — The manifest carries elements; it never asserts compliance.** The conditional elements
+- **B-2. The manifest carries elements; it never asserts compliance.** The conditional elements
   are required only where the licensor supplied them, which is a fact about the source, not about
   the work. The manifest therefore records what it holds and asserts that the obligation **exists**.
   No field may state that attribution has been satisfied, and no surface may present it that way.
   Whether a given reuse complies is the reuser's determination, on facts the manifest does not have.
 
-- **B-3 — Where a supplied notice has no field, the source pointer is what discharges it, and it
-  therefore becomes required.** Two of the conditional elements — a copyright notice and a
-  disclaimer notice — have **no home in the manifest**. §3(a)(2) supplies the answer the standard
+- **B-3. Where a supplied notice has no field, the source pointer is what discharges it, and it
+  therefore becomes required.** Two of the conditional elements (a copyright notice and a
+  disclaimer notice) have **no home in the manifest**. §3(a)(2) supplies the answer the standard
   should use rather than inventing one: the conditions may be satisfied by a URI to a resource
   containing the required information. So a determination citing an attribution-licence rule MUST
   carry a source URI to the object's own page. Without it, a manifest asserting the obligation
   provides no route by which a consumer could discharge the part it cannot carry.
 
-- **B-4 — Attribution is carried as structured elements, with the rendered strings alongside, and
+- **B-4. Attribution is carried as structured elements, with the rendered strings alongside, and
   the structure is authoritative.** The elements live in fields that already exist: creator in
   `work.artist.name`, title in `work.title`, the material's URI in the source URLs, the licence in
   `rights.statement`. `citation` carries the human-renderable form. Where they disagree the
   structured fields govern, because a rendered string is an interpretation of them.
 
-- **B-5 — A baked credit string MUST NOT be treated as the durable record.** §3(a)(3) permits a
+- **B-5. A baked credit string MUST NOT be treated as the durable record.** §3(a)(3) permits a
   licensor to require removal of the supplied attribution information. A consumer holding a frozen
   string cannot honour that; one resolving the structured elements at use time can. This is the
   same limitation the standard already states about withdrawal generally: the record is corrected
   at the source and consumers re-fetch, and the standard MUST NOT imply a push mechanism it does
   not have.
 
-- **B-6 — An absent creator is a legitimate state and MUST NOT fail the determination closed.**
+- **B-6. An absent creator is a legitimate state and MUST NOT fail the determination closed.**
   §3(a)(1)(A)(i) applies only where the licensor supplied a creator identification; an anonymous or
   workshop attribution is not a missing field, it is the state of the record.
   `work.artist.attributionType` already distinguishes these, so absence is **distinguishable from
   omission** and needs no new signal. A rule set that required a named creator would deny clearance
   to anonymous works the licence plainly grants.
 
-- **B-7 — Modification indication is the reuser's obligation, not the manifest's — with one
+- **B-7. Modification indication is the reuser's obligation, not the manifest's, with one
   exception.** §3(a)(1)(B) binds whoever shares the material. The manifest is not the sharer and
   cannot discharge it. **But where a manifest itself describes a modified rendition of the licensed
   material, it MUST indicate that**, because it is then supplying the very material whose
   modification must be indicated.
 
-- **B-8 — Rules are scoped to one licence version, and other versions are not assumed
+- **B-8. Rules are scoped to one licence version, and other versions are not assumed
   equivalent.** The ids in §5 name version 4.0. Earlier versions differ in ways that bear on these
-  rules — including the removal-request clause B-5 rests on. An unversioned "attribution licence"
+  rules, including the removal-request clause B-5 rests on. An unversioned "attribution licence"
   rule would invite a 4.0 truth table to be applied to a 3.0 work, which is a partial guess of
   exactly the kind the fail-closed default exists to refuse. Other versions get their own rules,
   or they get `default-deny`.
@@ -136,7 +136,7 @@ for every other rule; a licence value the producer could not resolve to a specif
 `default-deny` under B-8.
 
 **No schema change.** Every field these rules require is already published, which is what makes
-this a registry proposal — the test being *what does the shipped schema already carry*, not what
+this a registry proposal, the test being *what does the shipped schema already carry*, not what
 the change is called.
 
 ## 6. Conformance vectors required
@@ -166,7 +166,7 @@ Rule-id recognition already degrades correctly: a verifier that does not recogni
 a **non-fatal advisory and MUST NOT reject**. Such a consumer reads `commercialReproduction: true`,
 `derivatives: true` and `attributionRequired: true` off facets it already understands, with the
 credit strings in `citation` and the licence in `rights.statement`. **It can comply with the licence
-without recognising the rule that produced the determination** — the condition rides in a required
+without recognising the rule that produced the determination**: the condition rides in a required
 v0.1 facet, not in the rule id. That is the whole reason this element is safe where a new facet
 would not be.
 
@@ -178,11 +178,11 @@ Recorded so it is ready when the version partition is settled, rather than left 
   reciprocal-licensing obligation has nowhere to live. `shareAlikeRequired` is **new schema
   surface**, so it is a version-partition question and cannot ride in a rule-registry proposal.
 - **It is in the unsafe class for compatibility.** A consumer that ignored the obligation would
-  take a derivative without applying the reciprocal terms the obligation exists to impose — it
+  take a derivative without applying the reciprocal terms the obligation exists to impose, so it
   over-grants. So the facet needs both halves of the bridge pattern: the block rides in the
   extensions container, **and** its consequence is expressed where an existing consumer can see it.
 - **The v0.1-visible consequence is `derivatives.permitted: false`.** Until a consumer understands
-  share-alike, derivatives are not granted to it — the true position (permitted under reciprocal
+  share-alike, derivatives are not granted to it; the true position (permitted under reciprocal
   terms) rides in the extension for consumers that do. That is fail-closed in the correct direction
   and it costs only the capability the consumer could not have exercised safely anyway.
 - **The commercial facet is unaffected**, since share-alike conditions the licensing of adaptations,
