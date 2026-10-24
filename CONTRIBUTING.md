@@ -81,7 +81,7 @@ Commit messages and PR descriptions in this repository are part of the standard'
 Pull requests opened by the maintainer account or by Dependabot are also checked in CI (`scripts/check-public-text.mjs`):
 
 - every commit in the PR is authored and committed by one of the project's identities (the project address, the maintainer's GitHub web-UI address, or Dependabot's; GitHub may be the committer);
-- no commit message or PR description carries a co-author trailer, a coding-session trailer or link, or a retired identity domain.
+- no commit message or PR description carries a co-author trailer, or a coding-session trailer or link.
 
 The check does not apply to pull requests from other contributors. Your commits keep your own identity, and co-author trailers are welcome.
 

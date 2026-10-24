@@ -6,8 +6,8 @@
 // maintainer account (and Dependabot's), this check enforces the identity and
 // trailer rules in CONTRIBUTING.md:
 //   - every commit in the PR is authored and committed by an allowed identity;
-//   - no commit message or PR body carries a co-author trailer, a coding-session
-//     trailer or session link, or the retired identity domain.
+//   - no commit message or PR body carries a co-author trailer or a
+//     coding-session trailer or session link.
 // PRs from other contributors are not subject to it: co-author trailers are
 // normal practice in an open project, and their identities are their own.
 //
@@ -33,7 +33,6 @@ const DENIED_TEXT = [
   [/^[ \t]*co-?authored[- ]by\b/im, "a co-author trailer"],
   [/^[ \t]*claude[- ]session\b/im, "a coding-session trailer"],
   [/claude\.ai\/code\/session/i, "a coding-session link"],
-  [/chainalign/i, "the retired identity domain"],
 ];
 
 // Pure check: returns the list of problems for one PR.
@@ -87,7 +86,6 @@ function selfTest() {
     ["co-author trailer without hyphen or colon", { author: "cfpramod", commits: [{ ...ok, message: "Fix\n\nCo-Authored by A <a@example.com>\n" }], body: "" }, 1],
     ["session trailer in a message", { author: "cfpramod", commits: [{ ...ok, message: "Fix\n\nClaude-Session: abc\n" }], body: "" }, 1],
     ["session link in the body", { author: "cfpramod", commits: [ok], body: "See https://claude.ai/code/session_x" }, 1],
-    ["retired domain in the body", { author: "cfpramod", commits: [ok], body: "Mail x@ChainAlign.com" }, 1],
     ["prose mention of co-authorship is not a trailer", { author: "cfpramod", commits: [ok], body: "No co-authored-by trailers are used here." }, 0],
     ["outside contributor is not subject", { author: "someone-else", commits: [{ ...ok, authorEmail: "x@example.com", message: "Fix\n\nCo-authored-by: B <b@example.com>\n" }], body: "" }, null],
   ];
