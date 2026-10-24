@@ -7,8 +7,8 @@
 ## 1. What this widens
 
 Every rule in the published registry covers a licence that imposes **no condition on reuse**: CC0
-and the Public Domain Mark grant everything and waive attribution. Everything else — including the
-single most common licence on open-access cultural material after CC0 — resolves to
+and the Public Domain Mark grant everything and waive attribution. Everything else — including CC BY
+4.0, a widely used licence on open-access cultural material — resolves to
 `default-deny`: every facet `false`, `confidence: low`.
 
 That is honest, and it is a real limit. A work under an attribution licence **is** cleared for
