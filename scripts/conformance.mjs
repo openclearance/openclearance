@@ -31,11 +31,95 @@ const fail = (msg) => {
   console.error(`  FAIL  ${msg}`);
 };
 const pass = (msg) => console.log(`  ok    ${msg}`);
+// A check that could not run is neither a pass nor a failure, and the result
+// line says so.
+let skipped = 0;
+const skip = (msg) => {
+  skipped += 1;
+  console.log(`  SKIP  ${msg}`);
+};
+
+// JSON text parsed by hand, so that a repeated member name stays visible.
+// JSON.parse keeps the last of two equal names silently. This parser gives the
+// same value, and also records each object whose text repeats a name, which
+// clean() needs (proposal section 3.4). Callers check the text with
+// JSON.parse first; every loop is still bounded, so text that ends early
+// throws instead of hanging.
+const REPEATS_A_NAME = new WeakSet();
+function parseJsonText(text) {
+  let i = 0;
+  const skipSpace = () => {
+    while (i < text.length && " \t\n\r".includes(text[i])) i += 1;
+  };
+  const needMore = () => {
+    if (i >= text.length) throw new SyntaxError("JSON text ends early");
+  };
+  const readString = () => {
+    needMore();
+    const start = i;
+    i += 1;
+    while (i < text.length && text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+    needMore();
+    i += 1;
+    return JSON.parse(text.slice(start, i));
+  };
+  const readValue = () => {
+    skipSpace();
+    needMore();
+    if (text[i] === "{") {
+      i += 1;
+      const out = {};
+      const names = new Set();
+      skipSpace();
+      if (text[i] === "}") {
+        i += 1;
+        return out;
+      }
+      for (;;) {
+        skipSpace();
+        const name = readString();
+        skipSpace();
+        i += 1;
+        const member = readValue();
+        if (names.has(name)) REPEATS_A_NAME.add(out);
+        names.add(name);
+        // defineProperty, like JSON.parse, makes "__proto__" an own member.
+        Object.defineProperty(out, name, { value: member, writable: true, enumerable: true, configurable: true });
+        skipSpace();
+        needMore();
+        if (text[i++] === "}") return out;
+      }
+    }
+    if (text[i] === "[") {
+      i += 1;
+      const out = [];
+      skipSpace();
+      if (text[i] === "]") {
+        i += 1;
+        return out;
+      }
+      for (;;) {
+        out.push(readValue());
+        skipSpace();
+        needMore();
+        if (text[i++] === "]") return out;
+      }
+    }
+    if (text[i] === '"') return readString();
+    const start = i;
+    while (i < text.length && !",]} \t\n\r".includes(text[i])) i += 1;
+    return JSON.parse(text.slice(start, i));
+  };
+  return readValue();
+}
 
 const readJson = (path) => {
   const text = readFileSync(path, "utf8");
   try {
-    return { text, json: JSON.parse(text) };
+    const plain = JSON.parse(text);
+    const json = parseJsonText(text);
+    if (!jsonEqual(json, plain)) fail(`${path}: the duplicate-aware parser disagrees with JSON.parse`);
+    return { text, json };
   } catch (err) {
     fail(`${path} is not valid JSON: ${err.message}`);
     return null;
@@ -420,7 +504,10 @@ for (const file of negFiles) {
 //        (RFC 6901) must resolve to a node in the manifest;
 //      - the protected-name guard: productNaming.protectedNameUsePermitted may be
 //        true only on a mark self-claimed as both of-the-class and authorised,
-//        under a confirmed legal basis (never voluntary-code, never unknown).
+//        under a confirmed legal basis (never voluntary-code, never unknown);
+//      - source-text cleaning (v0.2 manifests): rights.sourceApiValue.valueCleaned
+//        must equal clean(value), and verification.ruleContext must contain no
+//        character that clean() removes.
 //    Deliberately NOT checked: locator liveness (a dead evidence locator changes
 //    nothing and this harness performs no network fetch by design), and the
 //    consumer-side duties that have no single-manifest observable (territorial
@@ -492,6 +579,94 @@ function resolvePointer(doc, pointer) {
     }
   }
   return node;
+}
+
+// Source-text cleaning (v0.2). clean() removes every code point in the set
+// below and changes nothing else: no HTML decoding, no normalisation, no
+// whitespace changes, so it is idempotent and any verifier recomputes it
+// exactly. The set is listed literally, pinned to Unicode 16.0:
+//   - C0 and C1 controls except TAB, LF and CR;
+//   - Default_Ignorable_Code_Point, except ZWNJ, ZWJ and the Mongolian
+//     U+180B..U+180F (orthographic in Persian, Indic and Mongolian scripts and
+//     in emoji sequences);
+//   - the interlinear annotation characters U+FFF9..U+FFFB;
+//   - unpaired surrogates.
+const CLEAN_REMOVED =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u200B\u200E\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF0-\uFFFB\u{1BCA0}-\u{1BCA3}\u{1D173}-\u{1D17A}\u{E0000}-\u{E0FFF}]|\p{Cs}/gu;
+const cleanText = (s) => s.replace(CLEAN_REMOVED, "");
+const hasRemovable = (s) => s.replace(CLEAN_REMOVED, "") !== s;
+
+// clean() over a JSON value: every string, member names included. Cleaning
+// that would merge two member names of one object yields null for the whole
+// value, so a hidden duplicate can never be silently resolved to one reading.
+// A name the text already repeats counts the same way.
+// Cleaned objects have a null prototype: on a plain {} an assignment to
+// "__proto__" sets the prototype instead of creating a member, which would
+// drop a member a source can legitimately send.
+const MERGED = Symbol("merged");
+function cleanJsonInner(value) {
+  if (typeof value === "string") return cleanText(value);
+  if (Array.isArray(value)) {
+    const out = value.map(cleanJsonInner);
+    return out.includes(MERGED) ? MERGED : out;
+  }
+  if (value !== null && typeof value === "object") {
+    if (REPEATS_A_NAME.has(value)) return MERGED;
+    const out = Object.create(null);
+    for (const [name, member] of Object.entries(value)) {
+      const cleanName = cleanText(name);
+      const cleanMember = cleanJsonInner(member);
+      if (cleanMember === MERGED || Object.prototype.hasOwnProperty.call(out, cleanName)) return MERGED;
+      out[cleanName] = cleanMember;
+    }
+    return out;
+  }
+  return value;
+}
+function cleanJson(value) {
+  const out = cleanJsonInner(value);
+  return out === MERGED ? null : out;
+}
+
+// Unpaired surrogates at the level of JSON text (proposal section 3.5). Some
+// JSON parsers cannot hold an unpaired surrogate: they substitute U+FFFD or
+// reject the text. A verifier built on one removes the escapes before
+// decoding. `literal` is the JSON text of one string, quotes included.
+// Escapes are read left to right as RFC 8259 tokenises them; a high-surrogate
+// escape directly followed by a low-surrogate escape is a pair, and every
+// other surrogate escape is removed. A raw character never contributes a
+// surrogate, since UTF-8 text cannot encode one.
+function dropUnpairedSurrogateEscapes(literal) {
+  const tokens = literal.match(/\\u[0-9A-Fa-f]{4}|\\.|[^\\]+/g) ?? [];
+  const unit = (t) => (t.length === 6 && t[0] === "\\" && t[1] === "u" ? parseInt(t.slice(2), 16) : -1);
+  const isHigh = (u) => u >= 0xd800 && u <= 0xdbff;
+  const isLow = (u) => u >= 0xdc00 && u <= 0xdfff;
+  let out = "";
+  for (let i = 0; i < tokens.length; i++) {
+    const u = unit(tokens[i]);
+    if (isHigh(u) && isLow(unit(tokens[i + 1] ?? ""))) {
+      out += tokens[i] + tokens[i + 1];
+      i += 1;
+    } else if (!isHigh(u) && !isLow(u)) {
+      out += tokens[i];
+    }
+  }
+  return out;
+}
+
+// JSON data-model equality (member order is not significant).
+// clean() never gives an object two members with one name.
+const repeatsAName = (value) =>
+  value !== null && typeof value === "object" && (REPEATS_A_NAME.has(value) || Object.values(value).some(repeatsAName));
+
+function jsonEqual(a, b) {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => jsonEqual(x, b[i]));
+  }
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+  const ka = Object.keys(a);
+  return ka.length === Object.keys(b).length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && jsonEqual(a[k], b[k]));
 }
 
 // The v0.1-safe bridge: a v0.1 manifest carries the v0.2 blocks inside
@@ -656,6 +831,24 @@ function checkV02Consistency(manifest) {
     }
   }
 
+  // Source-text cleaning applies to v0.2 manifests; a v0.1 manifest (including
+  // one carrying v0.2 blocks on the bridge) has no valueCleaned to check.
+  if (manifest.specVersion === "0.2") {
+    const sav = manifest.rights?.sourceApiValue;
+    if (
+      sav &&
+      typeof sav === "object" &&
+      "valueCleaned" in sav &&
+      (repeatsAName(sav.valueCleaned) || !jsonEqual(sav.valueCleaned, cleanJson(sav.value)))
+    ) {
+      problems.push("rights.sourceApiValue.valueCleaned is not clean(value)");
+    }
+    const ruleContext = manifest.verification?.ruleContext;
+    if (typeof ruleContext === "string" && hasRemovable(ruleContext)) {
+      problems.push("verification.ruleContext contains a character that clean() removes");
+    }
+  }
+
   return problems;
 }
 
@@ -727,8 +920,150 @@ if (ctx2Loaded?.json) {
         fail(`v0.2 context: '${term}' did not expand to ${iri}; found: ${Object.keys(top).join(", ")}`);
       }
     }
+    const savSample = {
+      "@context": [CONTEXT_URL_V02],
+      rights: { sourceApiValue: { field: "license", value: "CC0", valueCleaned: "CC0" } },
+    };
+    const savExpanded = await jsonld.expand(savSample, { documentLoader: localLoaderV02 });
+    const sav = savExpanded[0]?.[`${VOCAB_BASE}rights`]?.[0]?.[`${VOCAB_BASE}sourceApiValue`]?.[0] ?? {};
+    if (`${VOCAB_BASE_V02}valueCleaned` in sav) {
+      pass(`v0.2 context: 'valueCleaned' mints in the v0.2 vocabulary (${VOCAB_BASE_V02}valueCleaned)`);
+    } else {
+      fail(`v0.2 context: 'valueCleaned' did not expand to ${VOCAB_BASE_V02}valueCleaned; found: ${Object.keys(sav).join(", ")}`);
+    }
   } catch (err) {
     fail(`v0.2 JSON-LD expansion error: ${err.message}`);
+  }
+}
+
+// --- clean(): the literal set, its derivation, and its defining properties ---
+{
+  const removed = [];
+  for (let cp = 0; cp <= 0x10ffff; cp++) {
+    if (cp >= 0xd800 && cp <= 0xdfff) continue;
+    if (hasRemovable(String.fromCodePoint(cp))) removed.push(cp);
+  }
+  // The literal set must equal its property definition under Unicode 16.0.
+  // The check also runs under any later version: the table is pinned, so a
+  // later version that adds default-ignorable code points makes it fail, as
+  // the signal that a spec decision is due (proposal section 11). Before 16.0
+  // it cannot run.
+  const unicode = process.versions.unicode;
+  if (Number(unicode.split(".")[0]) >= 16) {
+    const kept = new Set([0x09, 0x0a, 0x0d, 0x180b, 0x180c, 0x180d, 0x180e, 0x180f, 0x200c, 0x200d]);
+    const derived = [];
+    for (let cp = 0; cp <= 0x10ffff; cp++) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      const ch = String.fromCodePoint(cp);
+      const inSet =
+        (/^\p{Cc}$/u.test(ch) || /^\p{Default_Ignorable_Code_Point}$/u.test(ch) || (cp >= 0xfff9 && cp <= 0xfffb)) &&
+        !kept.has(cp);
+      if (inSet) derived.push(cp);
+    }
+    if (derived.length === removed.length && derived.every((cp, i) => cp === removed[i])) {
+      pass(`clean(): the literal set equals its property definition under Unicode ${unicode} (${removed.length} code points, pinned to 16.0)`);
+    } else {
+      const listed = new Set(removed);
+      const inDerived = new Set(derived);
+      const hex = (cps) => cps.map((cp) => `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`).join(" ");
+      fail(
+        `clean(): under Unicode ${unicode} the literal set differs from its property definition ` +
+          `(set only: ${hex(removed.filter((cp) => !inDerived.has(cp))) || "none"}; ` +
+          `derived only: ${hex(derived.filter((cp) => !listed.has(cp))) || "none"}). ` +
+          "Under 16.0 the set is wrong; under a later version the pinned table needs a spec decision.",
+      );
+    }
+  } else {
+    // CI must run it: there a skip would go unseen.
+    const why = `clean(): property cross-check did not run, runtime Unicode ${unicode} is older than the 16.0 the set is pinned to`;
+    if (process.env.CI) fail(why);
+    else skip(why);
+  }
+
+  const every = removed.map((cp) => String.fromCodePoint(cp)).join("");
+  const sample = `a\tb\nc\r${every}\u200C\u200D\u180E d\u00E9\uD800z\uDFFF`;
+  const once = cleanText(sample);
+  if (cleanText(once) === once && !hasRemovable(once)) {
+    pass("clean(): idempotent, and its output contains nothing it would remove");
+  } else {
+    fail("clean(): not idempotent, or its output still contains a removable character");
+  }
+  if (once === "a\tb\nc\r\u200C\u200D\u180E d\u00E9z") {
+    pass("clean(): keeps TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors and vowel separator; drops unpaired surrogates");
+  } else {
+    fail(`clean(): unexpected output ${JSON.stringify(once)}`);
+  }
+  if (cleanText("\uD83D\u200B\uDE00") === "" && cleanText("\uD83D\uDE00") === "\uD83D\uDE00") {
+    pass("clean(): surrogate pairing is judged on the input; removing a character between two halves never joins them");
+  } else {
+    fail("clean(): removing a character between two surrogate halves joined them, or a valid pair was removed");
+  }
+  if (cleanText("<b>&amp;</b>") === "<b>&amp;</b>" && cleanText("e\u0301") === "e\u0301" && cleanText("  a  ") === "  a  ") {
+    pass("clean(): no HTML decoding, no normalisation, no whitespace change");
+  } else {
+    fail("clean(): changed markup, normalisation or whitespace");
+  }
+  const nested = { "k\u200B": ["v\u202E", 1, null, { x: "\uFEFFy" }] };
+  if (jsonEqual(cleanJson(nested), { k: ["v", 1, null, { x: "y" }] }) && cleanJson({ a: 1, "a\u2063": 2 }) === null && cleanJson([{ a: 1, "a\u2063": 2 }]) === null) {
+    pass("clean(): recurses into arrays, objects and member names; a member-name merge at any depth yields null");
+  } else {
+    fail("clean(): JSON recursion or member-name merge handling is wrong");
+  }
+  const proto = JSON.parse('{"__proto__":{"a":1},"b":2}');
+  const protoClean = cleanJson(proto);
+  if (
+    jsonEqual(protoClean, proto) &&
+    Object.keys(protoClean).join() === "__proto__,b" &&
+    cleanJson(JSON.parse('{"__proto__":1,"__proto__\u200B":2}')) === null
+  ) {
+    pass("clean(): a member named __proto__ stays a member, and a merge through it yields null");
+  } else {
+    fail("clean(): a member named __proto__ was dropped, or a merge through it was missed");
+  }
+  if (
+    cleanJson(parseJsonText('{"a":1,"a":2}')) === null &&
+    cleanJson(parseJsonText('[{"k":{"a":1,"a":1}}]')) === null &&
+    jsonEqual(cleanJson(parseJsonText('{"a":1,"b":{"a":2}}')), { a: 1, b: { a: 2 } }) &&
+    repeatsAName(parseJsonText('{"k":[{"a":1,"a":1}]}'))
+  ) {
+    pass("clean(): a member name the text already repeats yields null at any depth; equal names in different objects do not");
+  } else {
+    fail("clean(): a member name repeated in the text was resolved instead of yielding null");
+  }
+  const truncated = ['{"a":1,', '{"a', '"abc', '["x",', '{"a":"b\\', "[", "{"];
+  const throwsOnEnd = (t) => {
+    try {
+      parseJsonText(t);
+      return false;
+    } catch {
+      return true;
+    }
+  };
+  if (truncated.every(throwsOnEnd)) {
+    pass("clean(): the duplicate-aware parser throws on JSON text that ends early, rather than hanging");
+  } else {
+    fail("clean(): the duplicate-aware parser accepted JSON text that ends early");
+  }
+  const literals = [
+    '"a\\ud83dz"',
+    '"\\ud83d\\ude00"',
+    '"\\uD83D\\u200B\\uDE00"',
+    '"\\ude00\\ud83d"',
+    '"\\ud83d\\ud83d\\ude00"',
+    '"\\\\ud83d"',
+    '"\\ud83d' + "\uD83D\uDE00" + '"',
+    '"\\u0041\\n\\ud800"',
+  ];
+  const viaEscapes = literals.every((l) => {
+    const decoded = JSON.parse(dropUnpairedSurrogateEscapes(l));
+    return !/\p{Cs}/u.test(decoded) && cleanText(decoded) === cleanText(JSON.parse(l));
+  });
+  const lone = JSON.parse(literals[0]);
+  const replaced = cleanText(lone.replace(/\p{Cs}/gu, "\uFFFD")) !== cleanText(lone);
+  if (viaEscapes && replaced) {
+    pass("clean(): removing unpaired-surrogate escapes before decoding gives clean() of the decoded value; substituting U+FFFD does not");
+  } else {
+    fail("clean(): the escape-level route and clean() of the decoded value disagree");
   }
 }
 
@@ -759,6 +1094,24 @@ const V02_VECTORS = {
   "negative/rights-jurisdiction-core-overgrant.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-partial-matrix.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-under-worldwide.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  "rights-source-text-cleaned.json": { schema: "0.2", valid: true, verdict: "ok", extra: "cleaned" },
+  "rights-source-text-joiner-kept.json": { schema: "0.2", valid: true, verdict: "ok", extra: "joiner-kept" },
+  "rights-source-text-key-collision.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
+  "rights-source-text-proto-member.json": { schema: "0.2", valid: true, verdict: "ok", extra: "proto-member" },
+  "rights-source-text-proto-merge.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
+  "rights-source-text-lone-surrogate.json": { schema: "0.2", valid: true, verdict: "ok", extra: "lone-surrogate" },
+  "rights-source-text-duplicate-name.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
+  "negative/rights-source-text-uncleaned.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-altered.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-collision-merged.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-surrogates-joined.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-surrogate-replaced.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-duplicate-resolved.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-cleaned-repeats-name.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-cleaned-lone-surrogate.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-rulecontext-invisible.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "ruleContext contains a character" },
+  "negative/rights-rulecontext-lone-surrogate.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "ruleContext contains a character" },
+  "negative/rights-source-text-missing-cleaned.json": { schema: "0.2", valid: false },
 };
 
 for (const [rel, expect] of Object.entries(V02_VECTORS)) {
@@ -786,7 +1139,9 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
 
   const problems = checkV02Consistency(manifest);
   if (expect.verdict === "rejected") {
-    if (problems.length > 0) {
+    if (expect.reason && !problems.some((p) => p.includes(expect.reason))) {
+      fail(`${rel} was REJECTED for the wrong reason: expected '${expect.reason}', got: ${problems.join("; ") || "nothing"}`);
+    } else if (problems.length > 0) {
       pass(`${rel} is correctly REJECTED as inconsistent (${problems[0]})`);
     } else {
       fail(`${rel} was expected to be REJECTED but the consistency check found no problem`);
@@ -808,6 +1163,46 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
   }
 
   // Named follow-on checks per vector.
+  if (expect.extra === "cleaned") {
+    const sav = manifest.rights.sourceApiValue;
+    const hidden = [...sav.value].some((ch) => ch.codePointAt(0) >= 0xe0000);
+    if (hidden && sav.valueCleaned === "CC0") {
+      pass(`${rel} keeps the tag-character instruction in value as evidence and removes it from valueCleaned`);
+    } else {
+      fail(`${rel} must carry the hidden instruction in value and only 'CC0' in valueCleaned`);
+    }
+  }
+  if (expect.extra === "joiner-kept") {
+    const sav = manifest.rights.sourceApiValue;
+    if (sav.valueCleaned.includes("\u200C") && !sav.valueCleaned.includes("\uFEFF")) {
+      pass(`${rel} keeps the orthographic ZWNJ and drops the byte-order mark`);
+    } else {
+      fail(`${rel} must keep ZWNJ and drop U+FEFF in valueCleaned`);
+    }
+  }
+  if (expect.extra === "key-collision") {
+    if (manifest.rights.sourceApiValue.valueCleaned === null) {
+      pass(`${rel} carries valueCleaned null where two member names clean to one`);
+    } else {
+      fail(`${rel} must carry valueCleaned null for a member-name merge`);
+    }
+  }
+  if (expect.extra === "proto-member") {
+    const sav = manifest.rights.sourceApiValue;
+    if (Object.keys(sav.value).includes("__proto__") && Object.keys(sav.valueCleaned).includes("__proto__")) {
+      pass(`${rel} keeps a member named __proto__ in value and in valueCleaned`);
+    } else {
+      fail(`${rel} must carry a member named __proto__ in value and in valueCleaned`);
+    }
+  }
+  if (expect.extra === "lone-surrogate") {
+    const sav = manifest.rights.sourceApiValue;
+    if (/\p{Cs}/u.test(sav.value) && sav.valueCleaned === "Public domain ") {
+      pass(`${rel} carries an unpaired surrogate in value and none in valueCleaned`);
+    } else {
+      fail(`${rel} must carry an unpaired surrogate in value and none in valueCleaned`);
+    }
+  }
   if (expect.extra === "divergence") {
     const core = manifest.clearance.commercialReproduction.permitted;
     const eu = manifest.jurisdictionAssessments.find((e) => e.jurisdiction === "EU");
@@ -890,4 +1285,4 @@ if (failures > 0) {
   console.error(`Conformance FAILED: ${failures} problem(s).`);
   process.exit(1);
 }
-console.log("Conformance passed.");
+console.log(skipped > 0 ? `Conformance passed, but ${skipped} check(s) did not run (SKIP above).` : "Conformance passed.");

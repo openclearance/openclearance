@@ -52,6 +52,7 @@
     "sourceApiValue": "oc:sourceApiValue",
     "field": "oc:field",
     "value": "rdf:value",
+    "valueCleaned": "oc2:valueCleaned",
     "imageOpenAccess": { "@id": "oc:imageOpenAccess", "@type": "xsd:boolean" },
     "metadataOpenAccess": { "@id": "oc:metadataOpenAccess", "@type": "xsd:boolean" },
     "confidence": "oc:confidence",
