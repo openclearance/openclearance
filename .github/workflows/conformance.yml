@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "public/v0.1/**"
+      - "public/v0.2/**"
       - "src/**"
       - "scripts/**"
       - "package.json"
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - "public/v0.1/**"
+      - "public/v0.2/**"
       - "src/**"
       - "scripts/**"
       - "package.json"
@@ -35,7 +37,10 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      # The harness finishes in seconds. The limit turns a hang (a parser loop
+      # that never ends, say) into a prompt failure instead of a six-hour wait.
       - name: Run Clearance Manifest v0.1 conformance check
+        timeout-minutes: 2
         run: npm run conformance
 
       - name: Build the openclearance.org site
