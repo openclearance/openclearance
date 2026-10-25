@@ -250,8 +250,10 @@ The harness also checks clean() itself: the literal set equals its Unicode 16.0 
 is idempotent, TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors and vowel separator survive, unpaired surrogates do
 not, removing a character between two surrogate halves never joins them, markup and whitespace are untouched, a member-name merge at any depth gives `null`, a member named
 `__proto__` stays a member, and removing unpaired surrogate escapes before decoding agrees with
-clean() of the decoded value. A cross-check that cannot run, because the runtime has a different
-Unicode version, is reported as skipped rather than passed, and fails the run under CI. Every
+clean() of the decoded value. The derivation cross-check runs under Unicode 16.0 and any later
+version, so a later version that adds default-ignorable code points fails it and prompts the
+decision in section 11. Under an older version it cannot run: it is reported as skipped rather than
+passed, and it fails the run under CI. Every
 existing v0.2 example with a `sourceApiValue` now carries `valueCleaned`.
 
 ## 10. Versioning

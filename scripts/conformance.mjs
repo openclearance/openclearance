@@ -855,8 +855,13 @@ if (ctx2Loaded?.json) {
     if (cp >= 0xd800 && cp <= 0xdfff) continue;
     if (hasRemovable(String.fromCodePoint(cp))) removed.push(cp);
   }
-  // Under Unicode 16.0 the literal set must equal its property definition.
-  if (process.versions.unicode === "16.0") {
+  // The literal set must equal its property definition under Unicode 16.0.
+  // The check also runs under any later version: the table is pinned, so a
+  // later version that adds default-ignorable code points makes it fail, as
+  // the signal that a spec decision is due (proposal section 11). Before 16.0
+  // it cannot run.
+  const unicode = process.versions.unicode;
+  if (Number(unicode.split(".")[0]) >= 16) {
     const kept = new Set([0x09, 0x0a, 0x0d, 0x180b, 0x180c, 0x180d, 0x180e, 0x180f, 0x200c, 0x200d]);
     const derived = [];
     for (let cp = 0; cp <= 0x10ffff; cp++) {
@@ -868,13 +873,21 @@ if (ctx2Loaded?.json) {
       if (inSet) derived.push(cp);
     }
     if (derived.length === removed.length && derived.every((cp, i) => cp === removed[i])) {
-      pass(`clean(): the literal set equals its Unicode 16.0 property definition (${removed.length} code points)`);
+      pass(`clean(): the literal set equals its property definition under Unicode ${unicode} (${removed.length} code points, pinned to 16.0)`);
     } else {
-      fail("clean(): the literal set differs from its Unicode 16.0 property definition");
+      const listed = new Set(removed);
+      const inDerived = new Set(derived);
+      const hex = (cps) => cps.map((cp) => `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`).join(" ");
+      fail(
+        `clean(): under Unicode ${unicode} the literal set differs from its property definition ` +
+          `(set only: ${hex(removed.filter((cp) => !inDerived.has(cp))) || "none"}; ` +
+          `derived only: ${hex(derived.filter((cp) => !listed.has(cp))) || "none"}). ` +
+          "Under 16.0 the set is wrong; under a later version the pinned table needs a spec decision.",
+      );
     }
   } else {
-    // CI must run it: there a skip would go unseen whenever the runtime moves on.
-    const why = `clean(): property cross-check did not run, runtime Unicode is ${process.versions.unicode}, the set is pinned to 16.0`;
+    // CI must run it: there a skip would go unseen.
+    const why = `clean(): property cross-check did not run, runtime Unicode ${unicode} is older than the 16.0 the set is pinned to`;
     if (process.env.CI) fail(why);
     else skip(why);
   }
