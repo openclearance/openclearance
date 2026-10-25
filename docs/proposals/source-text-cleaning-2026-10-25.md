@@ -121,6 +121,9 @@ compute a different clean(), or none at all, for a conforming manifest. So:
   applies clean(). It applies the merge rule of section 3.4 to member names after that removal and
   before its parser resolves duplicate names. A verifier MUST NOT reject a manifest only because
   `value` contains an unpaired surrogate escape.
+- In `valueCleaned` and in `ruleContext`, an unpaired surrogate escape is a code point in R, so the
+  manifest fails SC-2 or SC-3. A verifier whose parser cannot represent it MUST detect such an
+  escape in the JSON text of those fields and reject the manifest; it MUST NOT remove it there.
 - U+FFFD written in the text itself, as a character or as an escape, is a visible character and is
   kept.
 
@@ -287,7 +290,8 @@ the start. No published document changes. v0.1 is untouched.
 6. **Unpaired surrogates at the producer.** Section 3.5 puts the work on verifiers. The alternative
    is to require producers to emit I-JSON, so that no manifest carries an unpaired surrogate escape
    at all. Every JSON parser could then read every manifest, but `value` would no longer be exactly
-   what the source sent when the source sent one. Not decided.
+   what the source sent when the source sent an unpaired surrogate or a noncharacter, both of which
+   I-JSON forbids. Not decided.
 7. **Private-use characters.** Not removed (section 7). Removing them closes a data channel, and
    also removes legitimate private-use text, such as characters for scripts Unicode does not yet
    encode. Not decided.
