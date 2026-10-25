@@ -420,11 +420,11 @@ for (const file of negFiles) {
 //      - the evidence input ban: no basis.inputs anywhere may cite an evidence
 //        item (evidence exists for a human; it never changes a verdict);
 //        both bans apply to what a field denotes under every recognised reading
-//        (pointer, fragment pointer, or a path in the grammar the schema defines
-//        for basis.inputs[].field, in either carriage);
+//        (pointer, fragment pointer, '$'-rooted query, or a path in the grammar
+//        the schema defines for basis.inputs[].field, in either carriage);
 //      - pointer-only citation: a basis input cites a manifest node only as an
-//        RFC 6901 pointer; a fragment pointer, or a path starting at a v0.2
-//        block or the bridge, is rejected;
+//        RFC 6901 pointer; a fragment pointer, a '$'-rooted query, or a path
+//        starting at a v0.2 block or the bridge, is rejected;
 //      - evidence-pointer resolution: every evidence[].supports JSON Pointer
 //        (RFC 6901) must resolve to a node in the manifest;
 //      - the protected-name guard: productNaming.protectedNameUsePermitted may be
