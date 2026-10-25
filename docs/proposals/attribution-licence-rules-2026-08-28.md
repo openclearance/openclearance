@@ -178,7 +178,7 @@ Recorded so it is ready when the version partition is settled, rather than left 
   reciprocal-licensing obligation has nowhere to live. `shareAlikeRequired` is **new schema
   surface**, so it is a version-partition question and cannot ride in a rule-registry proposal.
 - **It is in the unsafe class for compatibility.** A consumer that ignored the obligation would
-  take a derivative without applying the reciprocal terms the obligation exists to impose, so it
+  take a derivative without applying the reciprocal terms the obligation exists to impose: it
   over-grants. So the facet needs both halves of the bridge pattern: the block rides in the
   extensions container, **and** its consequence is expressed where an existing consumer can see it.
 - **The v0.1-visible consequence is `derivatives.permitted: false`.** Until a consumer understands
