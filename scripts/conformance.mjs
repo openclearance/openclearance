@@ -849,9 +849,14 @@ if (ctx2Loaded?.json) {
     fail("clean(): not idempotent, or its output still contains a removable character");
   }
   if (once === "a\tb\nc\r\u200C\u200D\u180E d\u00E9z") {
-    pass("clean(): keeps TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors; drops unpaired surrogates");
+    pass("clean(): keeps TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors and vowel separator; drops unpaired surrogates");
   } else {
     fail(`clean(): unexpected output ${JSON.stringify(once)}`);
+  }
+  if (cleanText("\uD83D\u200B\uDE00") === "" && cleanText("\uD83D\uDE00") === "\uD83D\uDE00") {
+    pass("clean(): surrogate pairing is judged on the input; removing a character between two halves never joins them");
+  } else {
+    fail("clean(): removing a character between two surrogate halves joined them, or a valid pair was removed");
   }
   if (cleanText("<b>&amp;</b>") === "<b>&amp;</b>" && cleanText("e\u0301") === "e\u0301" && cleanText("  a  ") === "  a  ") {
     pass("clean(): no HTML decoding, no normalisation, no whitespace change");
@@ -899,6 +904,7 @@ const V02_VECTORS = {
   "negative/rights-source-text-uncleaned.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-altered.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-collision-merged.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-surrogates-joined.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-rulecontext-invisible.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "ruleContext contains a character" },
   "negative/rights-source-text-missing-cleaned.json": { schema: "0.2", valid: false },
 };

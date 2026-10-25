@@ -59,7 +59,7 @@ clean(s) is the string s with every code point in the set **R** removed. Nothing
 | U+1BCA0..U+1BCA3 | Shorthand format controls |
 | U+1D173..U+1D17A | Musical symbol format controls |
 | U+E0000..U+E0FFF | Tag characters, variation selectors 17 to 256, and the reserved rest of the block |
-| unpaired surrogates | Code units U+D800..U+DFFF that do not form a pair; they are not characters at all |
+| unpaired surrogates | Code units U+D800..U+DFFF that do not form a pair; they are not characters at all. JSON text can carry them as `\u` escapes. |
 
 **How the set is derived**, for implementers who work from Unicode properties: R is
 `Cc` minus {TAB, LF, CR}, union `Default_Ignorable_Code_Point` minus the kept set below, union
@@ -67,6 +67,8 @@ U+FFF9..U+FFFB, union unpaired surrogates. Under Unicode 16.0 that derivation gi
 table above. **The table is normative and the derivation is informative**: a later Unicode version
 may add default-ignorable code points, and the definition must not change under an implementation
 that upgrades its Unicode data. A later spec version can extend the table.
+
+**Pairing is judged on the input.** A surrogate is unpaired when its neighbour in the input string is not its partner. Removal happens in one pass over the input, so removing a character from between two surrogate halves removes both halves too, and never joins them into a new character.
 
 ### 3.2 Kept, though default-ignorable
 
@@ -197,12 +199,13 @@ selector loses the glyph variant it selected while its base character stays.
 | `negative/rights-source-text-uncleaned.json` | Rejected (SC-2): `valueCleaned` still contains U+202E. |
 | `negative/rights-source-text-altered.json` | Rejected (SC-2): `valueCleaned` changes visible text. |
 | `negative/rights-source-text-collision-merged.json` | Rejected (SC-2): a merge resolved to one member instead of `null`. |
+| `negative/rights-source-text-surrogates-joined.json` | Rejected (SC-2): `value` holds two surrogate halves split by a zero-width space, and `valueCleaned` joins them into one emoji. clean() removes all three. |
 | `negative/rights-rulecontext-invisible.json` | Rejected (SC-3): `ruleContext` contains U+202E. |
 | `negative/rights-source-text-missing-cleaned.json` | Schema-invalid: `sourceApiValue` without `valueCleaned`. |
 
 The harness also checks clean() itself: the literal set equals its Unicode 16.0 derivation, clean()
-is idempotent, TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors survive, unpaired surrogates do
-not, markup and whitespace are untouched, and a member-name merge at any depth gives `null`. Every
+is idempotent, TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors and vowel separator survive, unpaired surrogates do
+not, removing a character between two surrogate halves never joins them, markup and whitespace are untouched, and a member-name merge at any depth gives `null`. Every
 existing v0.2 example with a `sourceApiValue` now carries `valueCleaned`.
 
 ## 10. Versioning
@@ -215,7 +218,9 @@ the start. No published document changes. v0.1 is untouched.
 1. **Variation selectors** (U+FE00..U+FE0F and U+E0100..U+E01EF). Removed by default. The cost:
    emoji lose their presentation selector, and ideographic variation sequences in names lose the
    selected glyph variant. The base characters stay in both cases. Keeping them would leave a
-   channel of up to 256 invisible values per position.
+   channel of up to 256 invisible values per position. The reference engine's open input-cleaning
+   change (open-museum-mcp #202) currently keeps variation selectors, while this draft removes them.
+   One decision settles both, and the engine and this definition must end up the same.
 2. **Zero-width space, word joiner and byte-order mark** (U+200B, U+2060, U+FEFF). Removed by
    default. The cost: some sources use U+200B as a line-break hint in scripts written without
    spaces, such as Thai, Lao, Khmer and Burmese; removing it loses break opportunities, not letters.
