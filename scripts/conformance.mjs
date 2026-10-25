@@ -641,10 +641,8 @@ function cleanJson(value) {
 // Escapes are read left to right as RFC 8259 tokenises them; a high-surrogate
 // escape directly followed by a low-surrogate escape is a pair, and every
 // other surrogate escape is removed. A raw character never contributes a
-// surrogate, since UTF-8 text cannot encode one. With a replacement, each
-// unpaired escape becomes that text instead, which models a parser that
-// substitutes U+FFFD.
-function dropUnpairedSurrogateEscapes(literal, replacement = "") {
+// surrogate, since UTF-8 text cannot encode one.
+function dropUnpairedSurrogateEscapes(literal) {
   const tokens = literal.match(/\\u[0-9A-Fa-f]{4}|\\.|[^\\]+/g) ?? [];
   const unit = (t) => (t.length === 6 && t[0] === "\\" && t[1] === "u" ? parseInt(t.slice(2), 16) : -1);
   const isHigh = (u) => u >= 0xd800 && u <= 0xdbff;
@@ -657,8 +655,6 @@ function dropUnpairedSurrogateEscapes(literal, replacement = "") {
       i += 1;
     } else if (!isHigh(u) && !isLow(u)) {
       out += tokens[i];
-    } else {
-      out += replacement;
     }
   }
   return out;
@@ -1087,15 +1083,23 @@ if (ctx2Loaded?.json) {
 // language runs them through its own parser. Each vector runs here twice:
 // through the duplicate-aware parser, and through the escape-level route of
 // section 3.5 as a verifier whose parser cannot hold an unpaired surrogate
-// would take it: unpaired escapes are removed from value before decoding,
-// detected in valueCleaned and ruleContext, and anything left is decoded the
-// way such a parser does, with U+FFFD in place of each one. Both routes must
-// give the expected result.
+// would take it: unpaired escapes are removed from input and value before
+// decoding and detected in valueCleaned and ruleContext, and the text is then
+// parsed by a parser that rejects any unpaired surrogate that reaches it.
+// Both routes must give the expected result.
 {
   const rel = "public/v0.2/conformance/source-text-cleaning.json";
   const loaded = readJson(join(root, rel));
   const hasUnpairedEscape = (text) => dropUnpairedSurrogateEscapes(text) !== text;
-  const lossy = (text) => parseJsonText(dropUnpairedSurrogateEscapes(text, String.fromCodePoint(0xfffd)));
+  const holdsSurrogate = (x) =>
+    typeof x === "string"
+      ? /\p{Cs}/u.test(x)
+      : x !== null && typeof x === "object" && Object.entries(x).some(([k, y]) => /\p{Cs}/u.test(k) || holdsSurrogate(y));
+  const strictParse = (text) => {
+    const parsed = parseJsonText(text);
+    if (holdsSurrogate(parsed)) throw new Error("an unpaired surrogate reached the parser");
+    return parsed;
+  };
   const utf8 = (s) => Buffer.from(s, "utf8").toString("hex");
   const isText = (x) => typeof x === "string";
   if (loaded) {
@@ -1122,7 +1126,7 @@ if (ctx2Loaded?.json) {
         if (v.kind === "clean") {
           const expected = parseJsonText(v.cleaned);
           const direct = cleanJson(parseJsonText(v.input));
-          const viaEscapes = cleanJson(lossy(dropUnpairedSurrogateEscapes(v.input)));
+          const viaEscapes = cleanJson(strictParse(dropUnpairedSurrogateEscapes(v.input)));
           const bytesOk = typeof expected === "string" ? v.cleanedUtf8 === utf8(expected) : v.cleanedUtf8 === undefined;
           if (repeatsAName(expected) || !bytesOk || !jsonEqual(direct, expected) || !jsonEqual(viaEscapes, expected)) {
             wrong.clean.push(v.id);
@@ -1131,14 +1135,17 @@ if (ctx2Loaded?.json) {
           const direct = valueCleanedFails(parseJsonText(v.value), parseJsonText(v.valueCleaned));
           const viaEscapes =
             hasUnpairedEscape(v.valueCleaned) ||
-            valueCleanedFails(lossy(dropUnpairedSurrogateEscapes(v.value)), lossy(v.valueCleaned));
+            valueCleanedFails(strictParse(dropUnpairedSurrogateEscapes(v.value)), strictParse(v.valueCleaned));
           const expected = v.verdict === "rejected";
           if (direct !== expected || viaEscapes !== expected) wrong.valueCleaned.push(v.id);
         } else {
           const text = parseJsonText(v.ruleContext);
           const direct = typeof text !== "string" || hasRemovable(text);
-          const lossyText = lossy(v.ruleContext);
-          const viaEscapes = hasUnpairedEscape(v.ruleContext) || typeof lossyText !== "string" || hasRemovable(lossyText);
+          let viaEscapes = hasUnpairedEscape(v.ruleContext);
+          if (!viaEscapes) {
+            const strict = strictParse(v.ruleContext);
+            viaEscapes = typeof strict !== "string" || hasRemovable(strict);
+          }
           const expected = v.verdict === "rejected";
           if (direct !== expected || viaEscapes !== expected) wrong.ruleContext.push(v.id);
         }
