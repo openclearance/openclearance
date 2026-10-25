@@ -39,7 +39,7 @@ jobs:
 
       # The harness finishes in seconds. The limit turns a hang (a parser loop
       # that never ends, say) into a prompt failure instead of a six-hour wait.
-      - name: Run Clearance Manifest v0.1 conformance check
+      - name: Run Clearance Manifest conformance check (v0.1 and v0.2)
         timeout-minutes: 2
         run: npm run conformance
 
