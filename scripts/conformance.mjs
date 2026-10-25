@@ -39,10 +39,76 @@ const skip = (msg) => {
   console.log(`  SKIP  ${msg}`);
 };
 
+// JSON text parsed by hand, so that a repeated member name stays visible.
+// JSON.parse keeps the last of two equal names silently. This parser gives the
+// same value, and also records each object whose text repeats a name, which
+// clean() needs (proposal section 3.4). The text is already valid JSON.
+const REPEATS_A_NAME = new WeakSet();
+function parseJsonText(text) {
+  let i = 0;
+  const skipSpace = () => {
+    while (i < text.length && " \t\n\r".includes(text[i])) i += 1;
+  };
+  const readString = () => {
+    const start = i;
+    i += 1;
+    while (text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+    i += 1;
+    return JSON.parse(text.slice(start, i));
+  };
+  const readValue = () => {
+    skipSpace();
+    if (text[i] === "{") {
+      i += 1;
+      const out = {};
+      const names = new Set();
+      skipSpace();
+      if (text[i] === "}") {
+        i += 1;
+        return out;
+      }
+      for (;;) {
+        skipSpace();
+        const name = readString();
+        skipSpace();
+        i += 1;
+        const member = readValue();
+        if (names.has(name)) REPEATS_A_NAME.add(out);
+        names.add(name);
+        // defineProperty, like JSON.parse, makes "__proto__" an own member.
+        Object.defineProperty(out, name, { value: member, writable: true, enumerable: true, configurable: true });
+        skipSpace();
+        if (text[i++] === "}") return out;
+      }
+    }
+    if (text[i] === "[") {
+      i += 1;
+      const out = [];
+      skipSpace();
+      if (text[i] === "]") {
+        i += 1;
+        return out;
+      }
+      for (;;) {
+        out.push(readValue());
+        skipSpace();
+        if (text[i++] === "]") return out;
+      }
+    }
+    if (text[i] === '"') return readString();
+    const start = i;
+    while (i < text.length && !",]} \t\n\r".includes(text[i])) i += 1;
+    return JSON.parse(text.slice(start, i));
+  };
+  return readValue();
+}
+
 const readJson = (path) => {
   const text = readFileSync(path, "utf8");
   try {
-    return { text, json: JSON.parse(text) };
+    const json = parseJsonText(text);
+    if (!jsonEqual(json, JSON.parse(text))) fail(`${path}: the duplicate-aware parser disagrees with JSON.parse`);
+    return { text, json };
   } catch (err) {
     fail(`${path} is not valid JSON: ${err.message}`);
     return null;
@@ -522,6 +588,7 @@ const hasRemovable = (s) => s.replace(CLEAN_REMOVED, "") !== s;
 // clean() over a JSON value: every string, member names included. Cleaning
 // that would merge two member names of one object yields null for the whole
 // value, so a hidden duplicate can never be silently resolved to one reading.
+// A name the text already repeats counts the same way.
 // Cleaned objects have a null prototype: on a plain {} an assignment to
 // "__proto__" sets the prototype instead of creating a member, which would
 // drop a member a source can legitimately send.
@@ -533,6 +600,7 @@ function cleanJsonInner(value) {
     return out.includes(MERGED) ? MERGED : out;
   }
   if (value !== null && typeof value === "object") {
+    if (REPEATS_A_NAME.has(value)) return MERGED;
     const out = Object.create(null);
     for (const [name, member] of Object.entries(value)) {
       const cleanName = cleanText(name);
@@ -576,6 +644,10 @@ function dropUnpairedSurrogateEscapes(literal) {
 }
 
 // JSON data-model equality (member order is not significant).
+// clean() never gives an object two members with one name.
+const repeatsAName = (value) =>
+  value !== null && typeof value === "object" && (REPEATS_A_NAME.has(value) || Object.values(value).some(repeatsAName));
+
 function jsonEqual(a, b) {
   if (a === b) return true;
   if (Array.isArray(a) || Array.isArray(b)) {
@@ -752,7 +824,12 @@ function checkV02Consistency(manifest) {
   // one carrying v0.2 blocks on the bridge) has no valueCleaned to check.
   if (manifest.specVersion === "0.2") {
     const sav = manifest.rights?.sourceApiValue;
-    if (sav && typeof sav === "object" && "valueCleaned" in sav && !jsonEqual(sav.valueCleaned, cleanJson(sav.value))) {
+    if (
+      sav &&
+      typeof sav === "object" &&
+      "valueCleaned" in sav &&
+      (repeatsAName(sav.valueCleaned) || !jsonEqual(sav.valueCleaned, cleanJson(sav.value)))
+    ) {
       problems.push("rights.sourceApiValue.valueCleaned is not clean(value)");
     }
     const ruleContext = manifest.verification?.ruleContext;
@@ -932,6 +1009,16 @@ if (ctx2Loaded?.json) {
   } else {
     fail("clean(): a member named __proto__ was dropped, or a merge through it was missed");
   }
+  if (
+    cleanJson(parseJsonText('{"a":1,"a":2}')) === null &&
+    cleanJson(parseJsonText('[{"k":{"a":1,"a":1}}]')) === null &&
+    jsonEqual(cleanJson(parseJsonText('{"a":1,"b":{"a":2}}')), { a: 1, b: { a: 2 } }) &&
+    repeatsAName(parseJsonText('{"k":[{"a":1,"a":1}]}'))
+  ) {
+    pass("clean(): a member name the text already repeats yields null at any depth; equal names in different objects do not");
+  } else {
+    fail("clean(): a member name repeated in the text was resolved instead of yielding null");
+  }
   const literals = [
     '"a\\ud83dz"',
     '"\\ud83d\\ude00"',
@@ -988,12 +1075,17 @@ const V02_VECTORS = {
   "rights-source-text-proto-member.json": { schema: "0.2", valid: true, verdict: "ok", extra: "proto-member" },
   "rights-source-text-proto-merge.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
   "rights-source-text-lone-surrogate.json": { schema: "0.2", valid: true, verdict: "ok", extra: "lone-surrogate" },
+  "rights-source-text-duplicate-name.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
   "negative/rights-source-text-uncleaned.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-altered.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-collision-merged.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-surrogates-joined.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-surrogate-replaced.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-duplicate-resolved.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-cleaned-repeats-name.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-cleaned-lone-surrogate.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-rulecontext-invisible.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "ruleContext contains a character" },
+  "negative/rights-rulecontext-lone-surrogate.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "ruleContext contains a character" },
   "negative/rights-source-text-missing-cleaned.json": { schema: "0.2", valid: false },
 };
 

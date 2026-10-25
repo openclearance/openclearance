@@ -102,6 +102,13 @@ base text and the annotation visible, which fails safe.
 duplicate name is a strong signal in itself, and choosing either member would silently decide which
 reading the consumer sees. With `null`, the consumer sees that no clean reading exists.
 
+**The same holds when the text of `value` already repeats a member name**, for example
+`{"license":"CC0","license":"CC BY-NC"}`: the result is `null`, whichever member a JSON parser
+would keep. RFC 8259 leaves the meaning of a repeated name to the parser, and parsers differ: some
+keep the last, some the first, some reject. A verifier therefore reads the names in the text of
+`value` itself, not after a parser has resolved them. clean() never gives an object two members
+with one name, so a `valueCleaned` whose text repeats a name is not clean(`value`) (SC-2).
+
 ### 3.5 Unpaired surrogates in JSON text
 
 JSON text can carry a lone surrogate as a `\uXXXX` escape: RFC 8259 allows it, and I-JSON
@@ -118,8 +125,8 @@ compute a different clean(), or none at all, for a conforming manifest. So:
   the pairing rule of section 3.1, read at the level of escapes.
 - A verifier whose parser cannot represent unpaired surrogates MUST still reach the result above.
   It removes every unpaired surrogate escape from the JSON text of `value` before decoding, then
-  applies clean(). It applies the merge rule of section 3.4 to member names after that removal and
-  before its parser resolves duplicate names. A verifier MUST NOT reject a manifest only because
+  applies clean(). It applies section 3.4 to member names after that removal, including names the
+  text already repeats, before its parser resolves duplicates. A verifier MUST NOT reject a manifest only because
   `value` contains an unpaired surrogate escape.
 - In `valueCleaned` and in `ruleContext`, an unpaired surrogate escape is a code point in R, so the
   manifest fails SC-2 or SC-3. A verifier whose parser cannot represent it MUST detect such an
@@ -241,18 +248,23 @@ selector loses the glyph variant it selected while its base character stays.
 | `rights-source-text-proto-member.json` | Valid. `value` holds a member named `__proto__`, and `valueCleaned` keeps it as a member. |
 | `rights-source-text-proto-merge.json` | Valid. `__proto__` and `__proto__` followed by U+200B clean to one name; `valueCleaned` is `null`. |
 | `rights-source-text-lone-surrogate.json` | Valid. `value` ends in an unpaired high surrogate, as a string cut inside an emoji does; `valueCleaned` drops it. |
+| `rights-source-text-duplicate-name.json` | Valid. The text of `value` repeats the name `license`; `valueCleaned` is `null`. |
 | `negative/rights-source-text-uncleaned.json` | Rejected (SC-2): `valueCleaned` still contains U+202E. |
 | `negative/rights-source-text-altered.json` | Rejected (SC-2): `valueCleaned` changes visible text. |
 | `negative/rights-source-text-collision-merged.json` | Rejected (SC-2): a merge resolved to one member instead of `null`. |
 | `negative/rights-source-text-surrogates-joined.json` | Rejected (SC-2): `value` holds two surrogate halves split by a zero-width space, and `valueCleaned` joins them into one emoji. clean() removes all three. |
 | `negative/rights-source-text-surrogate-replaced.json` | Rejected (SC-2): `valueCleaned` has U+FFFD where `value` has an unpaired surrogate (section 3.5). |
+| `negative/rights-source-text-duplicate-resolved.json` | Rejected (SC-2): `value` repeats a name, and `valueCleaned` keeps the last member instead of `null`. |
+| `negative/rights-source-text-cleaned-repeats-name.json` | Rejected (SC-2): the text of `valueCleaned` repeats a name. |
+| `negative/rights-source-text-cleaned-lone-surrogate.json` | Rejected (SC-2): `value` holds a real U+FFFD, and `valueCleaned` holds an unpaired surrogate escape in its place (section 3.5). |
 | `negative/rights-rulecontext-invisible.json` | Rejected (SC-3): `ruleContext` contains U+202E. |
+| `negative/rights-rulecontext-lone-surrogate.json` | Rejected (SC-3): `ruleContext` contains an unpaired surrogate escape (section 3.5). |
 | `negative/rights-source-text-missing-cleaned.json` | Schema-invalid: `sourceApiValue` without `valueCleaned`. |
 
 The harness also checks clean() itself: the literal set equals its Unicode 16.0 derivation, clean()
 is idempotent, TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors and vowel separator survive, unpaired surrogates do
-not, removing a character between two surrogate halves never joins them, markup and whitespace are untouched, a member-name merge at any depth gives `null`, a member named
-`__proto__` stays a member, and removing unpaired surrogate escapes before decoding agrees with
+not, removing a character between two surrogate halves never joins them, markup and whitespace are untouched, a member-name merge at any depth gives `null`, so does a name the text
+already repeats, a member named `__proto__` stays a member, and removing unpaired surrogate escapes before decoding agrees with
 clean() of the decoded value. The derivation cross-check runs under Unicode 16.0 and any later
 version, so a later version that adds default-ignorable code points fails it and prompts the
 decision in section 11. Under an older version it cannot run: it is reported as skipped rather than
@@ -295,3 +307,8 @@ the start. No published document changes. v0.1 is untouched.
 7. **Private-use characters.** Not removed (section 7). Removing them closes a data channel, and
    also removes legitimate private-use text, such as characters for scripts Unicode does not yet
    encode. Not decided.
+8. **Names the source text already repeats.** Section 3.4 makes clean() `null` for them. The
+   alternative is to apply the merge rule only to names that become equal through removal, and to
+   say how a repeated name in the text resolves. That keeps a cleaned reading for such sources, but
+   it has to choose one parser behaviour that RFC 8259 leaves open, and every verifier would have to
+   reproduce it. Not decided.
