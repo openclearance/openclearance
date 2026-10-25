@@ -529,17 +529,117 @@ function normaliseV02(manifest) {
   return { view, atTop, inBridge };
 }
 
-// Tokens of a non-pointer field read as a path: an optional JSONPath root '$',
-// then segments '.name', '[n]', '[name]', "['name']" or '["name"]' (a leading
-// name needs no '.'; inside quotes, '\' escapes the quote or itself). The
-// bridge key, which contains dots, is one segment when unquoted. Names compare
-// exactly: case, whitespace and percent-encoding are not normalised. A
-// malformed tail ends the reading at the last complete segment, since that
-// prefix is what path tooling resolves.
+// RFC 9535 lexical pieces shared by both path readings.
+const PATH_NAME = /^[A-Za-z_\u{80}-\u{D7FF}\u{E000}-\u{10FFFF}][A-Za-z0-9_\u{80}-\u{D7FF}\u{E000}-\u{10FFFF}]*/u;
+const PATH_INDEX = /^(?:0|-?[1-9][0-9]*)/;
+const PATH_BLANKS = /^[ \t\n\r]*/;
+const PATH_ESCAPES = { b: "\b", f: "\f", n: "\n", r: "\r", t: "\t", "/": "/", "\\": "\\" };
+
+// An RFC 9535 string literal whose opening quote is at field[i]. Returns the
+// decoded name and the index past the closing quote, or null when malformed.
+function readQuotedName(field, i) {
+  const quote = field[i];
+  let name = "";
+  let j = i + 1;
+  const hex4 = (at) => (/^[0-9A-Fa-f]{4}$/.test(field.slice(at, at + 4)) ? parseInt(field.slice(at, at + 4), 16) : null);
+  while (j < field.length && field[j] !== quote) {
+    const c = field[j];
+    if (c === "\\") {
+      const e = field[j + 1];
+      if (e === quote) {
+        name += quote;
+        j += 2;
+      } else if (Object.hasOwn(PATH_ESCAPES, e)) {
+        name += PATH_ESCAPES[e];
+        j += 2;
+      } else if (e === "u") {
+        const hi = hex4(j + 2);
+        if (hi === null || (hi >= 0xdc00 && hi <= 0xdfff)) return null;
+        if (hi >= 0xd800 && hi <= 0xdbff) {
+          const lo = field.slice(j + 6, j + 8) === "\\u" ? hex4(j + 8) : null;
+          if (lo === null || lo < 0xdc00 || lo > 0xdfff) return null;
+          name += String.fromCharCode(hi, lo);
+          j += 12;
+        } else {
+          name += String.fromCharCode(hi);
+          j += 6;
+        }
+      } else {
+        return null;
+      }
+    } else if (c.charCodeAt(0) < 0x20) {
+      return null;
+    } else {
+      name += c;
+      j += 1;
+    }
+  }
+  return j < field.length ? { name, end: j + 1 } : null;
+}
+
+// A field that opens in path notation ('$' then a segment or nothing, or a
+// leading '.', '[' or '*') is an expression into a document, not a field name.
+function opensInPathNotation(field) {
+  return /^\$[ \t\n\r]*(?:$|[.[])/.test(field) || /^[.[*]/.test(field);
+}
+
+// Tokens of a field in path notation, which must parse completely as an
+// RFC 9535 singular query: '$' (implicit when absent), then segments
+// '.name' (member-name shorthand) or '[' index or quoted name ']', with
+// blanks allowed between segments and inside brackets. Anything else,
+// including wildcards, descendant segments, unions, slices and filters, does
+// not parse and yields null.
+function singularQueryTokens(field) {
+  const tokens = [];
+  let i = field[0] === "$" ? 1 : 0;
+  const blanks = () => {
+    const n = PATH_BLANKS.exec(field.slice(i))[0].length;
+    i += n;
+    return n;
+  };
+  for (;;) {
+    const skipped = blanks();
+    if (i === field.length) return skipped > 0 ? null : tokens;
+    if (field[i] === ".") {
+      const m = PATH_NAME.exec(field.slice(i + 1));
+      if (!m) return null;
+      tokens.push(m[0]);
+      i += 1 + m[0].length;
+    } else if (field[i] === "[") {
+      i += 1;
+      blanks();
+      if (field[i] === "'" || field[i] === '"') {
+        const q = readQuotedName(field, i);
+        if (!q) return null;
+        tokens.push(q.name);
+        i = q.end;
+      } else {
+        const m = PATH_INDEX.exec(field.slice(i));
+        if (!m) return null;
+        tokens.push(m[0]);
+        i += m[0].length;
+      }
+      blanks();
+      if (field[i] !== "]") return null;
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+}
+
+// Tokens of any other non-pointer field read as a path: a leading name, then
+// segments '.name', '[n]', '[name]', "['name']" or '["name"]' (quoted names
+// decode RFC 9535 escapes). The bridge key, which contains dots, is one
+// segment when unquoted. Names compare exactly: case, whitespace and
+// percent-encoding are not normalised. A malformed segment ends the reading
+// at the last complete segment, since that prefix is what path tooling
+// resolves; an empty name and '*' are malformed (they are the RFC 9535
+// descendant and wildcard operators), as is a bracket holding anything but
+// an index, a member name or one quoted name.
 function pathTokens(field) {
   const tokens = [];
   let i = 0;
-  if (field[0] === "$" && (field.length === 1 || field[1] === "." || field[1] === "[")) i = 1;
   const readName = () => {
     if (field.startsWith(V02_EXTENSION_KEY, i)) {
       const end = i + V02_EXTENSION_KEY.length;
@@ -550,35 +650,32 @@ function pathTokens(field) {
     }
     let name = "";
     while (i < field.length && field[i] !== "." && field[i] !== "[") name += field[i++];
-    return name;
+    return name === "" || name === "*" ? null : name;
   };
   while (i < field.length) {
-    if (field[i] === ".") {
-      i += 1;
-      tokens.push(readName());
+    let token;
+    if (field[i] === "." || tokens.length === 0) {
+      if (field[i] === ".") i += 1;
+      token = readName();
     } else if (field[i] === "[") {
-      const quote = field[i + 1];
-      if (quote === "'" || quote === '"') {
-        let name = "";
-        let j = i + 2;
-        while (j < field.length && field[j] !== quote) {
-          if (field[j] === "\\" && j + 1 < field.length) j += 1;
-          name += field[j++];
+      if (field[i + 1] === "'" || field[i + 1] === '"') {
+        const q = readQuotedName(field, i + 1);
+        if (q && field[q.end] === "]") {
+          token = q.name;
+          i = q.end + 1;
         }
-        if (field[j] !== quote || field[j + 1] !== "]") break;
-        tokens.push(name);
-        i = j + 2;
       } else {
         const close = field.indexOf("]", i);
-        if (close === -1) break;
-        tokens.push(field.slice(i + 1, close));
-        i = close + 1;
+        const inner = close === -1 ? "" : field.slice(i + 1, close);
+        const whole = (re) => re.exec(inner)?.[0] === inner;
+        if (inner !== "" && (whole(PATH_INDEX) || whole(PATH_NAME))) {
+          token = inner;
+          i = close + 1;
+        }
       }
-    } else if (tokens.length === 0) {
-      tokens.push(readName());
-    } else {
-      break;
     }
+    if (token == null) break;
+    tokens.push(token);
   }
   return tokens;
 }
@@ -586,9 +683,11 @@ function pathTokens(field) {
 // What a basis input's `field` denotes. A value beginning with '/' is an
 // RFC 6901 pointer into the manifest, the only form for citing a manifest node.
 // A '#' fragment that decodes to a pointer also addresses the manifest, but
-// outside that form. Any other value names a source-record field and is also
-// read as a path, because path tooling will resolve it against the manifest.
-// A leading bridge prefix is removed so both carriages compare alike.
+// outside that form. A value in path notation that does not parse completely
+// has no single reading, so it is 'unparsed' and treated as such a citation.
+// Any other value names a source-record field and is also read as a path,
+// because path tooling will resolve it against the manifest. A leading bridge
+// prefix is removed so both carriages compare alike.
 function fieldReading(field) {
   const pointerTokens = (p) => p.slice(1).split("/").map((t) => t.replace(/~1/g, "/").replace(/~0/g, "~"));
   let form;
@@ -608,11 +707,13 @@ function fieldReading(field) {
     if (decoded === "" || decoded?.startsWith("/")) {
       form = "fragment";
       tokens = decoded === "" ? [] : pointerTokens(decoded);
+    } else if (opensInPathNotation(field)) {
+      tokens = singularQueryTokens(field);
+      if (tokens === null) return { form: "unparsed", tokens: null, bridged: false };
+      form = "path";
     } else {
       form = "path";
       tokens = pathTokens(field);
-      // A path with no complete segment addresses nothing; only '$' names the root.
-      if (tokens.length === 0 && field !== "$") return { form, tokens: null, bridged: false };
     }
   }
   const bridged = tokens[0] === "extensions" && tokens[1] === V02_EXTENSION_KEY;
@@ -637,15 +738,15 @@ function citesBlock(inputs, block, carriage) {
 }
 
 // Inputs that cite a manifest node outside the pointer form. A fragment
-// pointer always does. A path does when it starts in a v0.2 block or the
-// bridge: those names were introduced by v0.2, so the path can only mean the
+// pointer and unparsed path notation always do. A path does when it starts
+// in a v0.2 block or the bridge: those names were introduced by v0.2, so the path can only mean the
 // manifest node. A path starting with a v0.1 name (`rights.statement`) cannot
 // be told apart from a same-named source-record field, and is read as one.
 function nonPointerNodeCitations(inputs) {
   return (inputs ?? []).filter((input) => {
     if (typeof input?.field !== "string") return false;
     const { form, tokens, bridged } = fieldReading(input.field);
-    if (form === "fragment") return true;
+    if (form === "fragment" || form === "unparsed") return true;
     return form === "path" && tokens !== null && (bridged || V02_BLOCK_NAMES.includes(tokens[0]));
   });
 }
@@ -1100,7 +1201,35 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       ["%2Fdesignation", null],
       ["#designation", null],
       ["designation/marks/0", null],
-      ["[", null],
+      ["$..designation", FORM],
+      ["$..marks", FORM],
+      ["..designation", FORM],
+      ["$.*", FORM],
+      ["$[*]", FORM],
+      ["$..*", FORM],
+      ["*", FORM],
+      ["$['designation','evidence']", FORM],
+      ["$[?@.marks]", FORM],
+      ["$[0:1]", FORM],
+      ["$.designation ", FORM],
+      ["$.rights ", FORM],
+      ["$.rights.*", FORM],
+      ["$['desig\\qnation']", FORM],
+      ["[", FORM],
+      [`$.extensions.${K}.designation`, FORM],
+      ["$[ 'designation' ]", "designation"],
+      ["$ .designation", "designation"],
+      ["$['\\u0064esignation']", "designation"],
+      ['$["\\u0065vidence"]', "evidence"],
+      ["$.designation.marks[-1]", "designation"],
+      [".designation", "designation"],
+      ["designation..marks", "designation"],
+      ["$designation", null],
+      ["designation_note", null],
+      ["designationDate", null],
+      ["edm:rights", null],
+      ["rights[*]", null],
+      ["$['rights']", null],
     ];
     const check = (label, manifest, field, block) => {
       manifest.clearance.commercialReproduction.basis.inputs.push({ field, value: null });
@@ -1132,6 +1261,8 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
     for (const field of ["$", "extensions", bridge]) {
       check("no designation or evidence: ", JSON.parse(JSON.stringify(bare)), field, null);
     }
+    // Unparsed path notation is rejected for its form whatever the manifest holds.
+    check("no designation or evidence: ", JSON.parse(JSON.stringify(bare)), "$..*", FORM);
     const bridged = JSON.parse(JSON.stringify(loaded.json));
     bridged.extensions = { ...(bridged.extensions ?? {}), [K]: {} };
     for (const name of V02_BLOCK_NAMES) {
@@ -1140,7 +1271,19 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
         delete bridged[name];
       }
     }
-    for (const [field, block] of [["extensions", "designation"], [bridge, "designation"], ["$", "designation"], ["/designation", "designation"]]) {
+    for (const [field, block] of [
+      ["extensions", "designation"],
+      [bridge, "designation"],
+      ["$", "designation"],
+      ["/designation", "designation"],
+      ["extensions..designation", "designation"],
+      ["extensions.*", "designation"],
+      ["extensions[*]", "designation"],
+      [`extensions[ '${K}' ]`, "designation"],
+      [`extensions['\\u0068${K.slice(1)}'].designation`, "designation"],
+      [`$.extensions['${K}'].designation`, "designation"],
+      [`$.extensions[*]`, FORM],
+    ]) {
       check("blocks in the bridge: ", JSON.parse(JSON.stringify(bridged)), field, block);
     }
   }
