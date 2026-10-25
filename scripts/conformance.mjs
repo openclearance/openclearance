@@ -31,6 +31,13 @@ const fail = (msg) => {
   console.error(`  FAIL  ${msg}`);
 };
 const pass = (msg) => console.log(`  ok    ${msg}`);
+// A check that could not run is neither a pass nor a failure, and the result
+// line says so.
+let skipped = 0;
+const skip = (msg) => {
+  skipped += 1;
+  console.log(`  SKIP  ${msg}`);
+};
 
 const readJson = (path) => {
   const text = readFileSync(path, "utf8");
@@ -515,6 +522,9 @@ const hasRemovable = (s) => s.replace(CLEAN_REMOVED, "") !== s;
 // clean() over a JSON value: every string, member names included. Cleaning
 // that would merge two member names of one object yields null for the whole
 // value, so a hidden duplicate can never be silently resolved to one reading.
+// Cleaned objects have a null prototype: on a plain {} an assignment to
+// "__proto__" sets the prototype instead of creating a member, which would
+// drop a member a source can legitimately send.
 const MERGED = Symbol("merged");
 function cleanJsonInner(value) {
   if (typeof value === "string") return cleanText(value);
@@ -523,7 +533,7 @@ function cleanJsonInner(value) {
     return out.includes(MERGED) ? MERGED : out;
   }
   if (value !== null && typeof value === "object") {
-    const out = {};
+    const out = Object.create(null);
     for (const [name, member] of Object.entries(value)) {
       const cleanName = cleanText(name);
       const cleanMember = cleanJsonInner(member);
@@ -537,6 +547,32 @@ function cleanJsonInner(value) {
 function cleanJson(value) {
   const out = cleanJsonInner(value);
   return out === MERGED ? null : out;
+}
+
+// Unpaired surrogates at the level of JSON text (proposal section 3.5). Some
+// JSON parsers cannot hold an unpaired surrogate: they substitute U+FFFD or
+// reject the text. A verifier built on one removes the escapes before
+// decoding. `literal` is the JSON text of one string, quotes included.
+// Escapes are read left to right as RFC 8259 tokenises them; a high-surrogate
+// escape directly followed by a low-surrogate escape is a pair, and every
+// other surrogate escape is removed. A raw character never contributes a
+// surrogate, since UTF-8 text cannot encode one.
+function dropUnpairedSurrogateEscapes(literal) {
+  const tokens = literal.match(/\\u[0-9A-Fa-f]{4}|\\.|[^\\]+/g) ?? [];
+  const unit = (t) => (t.length === 6 && t[0] === "\\" && t[1] === "u" ? parseInt(t.slice(2), 16) : -1);
+  const isHigh = (u) => u >= 0xd800 && u <= 0xdbff;
+  const isLow = (u) => u >= 0xdc00 && u <= 0xdfff;
+  let out = "";
+  for (let i = 0; i < tokens.length; i++) {
+    const u = unit(tokens[i]);
+    if (isHigh(u) && isLow(unit(tokens[i + 1] ?? ""))) {
+      out += tokens[i] + tokens[i + 1];
+      i += 1;
+    } else if (!isHigh(u) && !isLow(u)) {
+      out += tokens[i];
+    }
+  }
+  return out;
 }
 
 // JSON data-model equality (member order is not significant).
@@ -837,7 +873,10 @@ if (ctx2Loaded?.json) {
       fail("clean(): the literal set differs from its Unicode 16.0 property definition");
     }
   } else {
-    pass(`clean(): property cross-check skipped, runtime Unicode is ${process.versions.unicode}, the set is pinned to 16.0`);
+    // CI must run it: there a skip would go unseen whenever the runtime moves on.
+    const why = `clean(): property cross-check did not run, runtime Unicode is ${process.versions.unicode}, the set is pinned to 16.0`;
+    if (process.env.CI) fail(why);
+    else skip(why);
   }
 
   const every = removed.map((cp) => String.fromCodePoint(cp)).join("");
@@ -868,6 +907,38 @@ if (ctx2Loaded?.json) {
     pass("clean(): recurses into arrays, objects and member names; a member-name merge at any depth yields null");
   } else {
     fail("clean(): JSON recursion or member-name merge handling is wrong");
+  }
+  const proto = JSON.parse('{"__proto__":{"a":1},"b":2}');
+  const protoClean = cleanJson(proto);
+  if (
+    jsonEqual(protoClean, proto) &&
+    Object.keys(protoClean).join() === "__proto__,b" &&
+    cleanJson(JSON.parse('{"__proto__":1,"__proto__\u200B":2}')) === null
+  ) {
+    pass("clean(): a member named __proto__ stays a member, and a merge through it yields null");
+  } else {
+    fail("clean(): a member named __proto__ was dropped, or a merge through it was missed");
+  }
+  const literals = [
+    '"a\\ud83dz"',
+    '"\\ud83d\\ude00"',
+    '"\\uD83D\\u200B\\uDE00"',
+    '"\\ude00\\ud83d"',
+    '"\\ud83d\\ud83d\\ude00"',
+    '"\\\\ud83d"',
+    '"\\ud83d' + "\uD83D\uDE00" + '"',
+    '"\\u0041\\n\\ud800"',
+  ];
+  const viaEscapes = literals.every((l) => {
+    const decoded = JSON.parse(dropUnpairedSurrogateEscapes(l));
+    return !/\p{Cs}/u.test(decoded) && cleanText(decoded) === cleanText(JSON.parse(l));
+  });
+  const lone = JSON.parse(literals[0]);
+  const replaced = cleanText(lone.replace(/\p{Cs}/gu, "\uFFFD")) !== cleanText(lone);
+  if (viaEscapes && replaced) {
+    pass("clean(): removing unpaired-surrogate escapes before decoding gives clean() of the decoded value; substituting U+FFFD does not");
+  } else {
+    fail("clean(): the escape-level route and clean() of the decoded value disagree");
   }
 }
 
@@ -901,10 +972,14 @@ const V02_VECTORS = {
   "rights-source-text-cleaned.json": { schema: "0.2", valid: true, verdict: "ok", extra: "cleaned" },
   "rights-source-text-joiner-kept.json": { schema: "0.2", valid: true, verdict: "ok", extra: "joiner-kept" },
   "rights-source-text-key-collision.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
+  "rights-source-text-proto-member.json": { schema: "0.2", valid: true, verdict: "ok", extra: "proto-member" },
+  "rights-source-text-proto-merge.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
+  "rights-source-text-lone-surrogate.json": { schema: "0.2", valid: true, verdict: "ok", extra: "lone-surrogate" },
   "negative/rights-source-text-uncleaned.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-altered.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-collision-merged.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-source-text-surrogates-joined.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-surrogate-replaced.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
   "negative/rights-rulecontext-invisible.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "ruleContext contains a character" },
   "negative/rights-source-text-missing-cleaned.json": { schema: "0.2", valid: false },
 };
@@ -980,6 +1055,22 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       pass(`${rel} carries valueCleaned null where two member names clean to one`);
     } else {
       fail(`${rel} must carry valueCleaned null for a member-name merge`);
+    }
+  }
+  if (expect.extra === "proto-member") {
+    const sav = manifest.rights.sourceApiValue;
+    if (Object.keys(sav.value).includes("__proto__") && Object.keys(sav.valueCleaned).includes("__proto__")) {
+      pass(`${rel} keeps a member named __proto__ in value and in valueCleaned`);
+    } else {
+      fail(`${rel} must carry a member named __proto__ in value and in valueCleaned`);
+    }
+  }
+  if (expect.extra === "lone-surrogate") {
+    const sav = manifest.rights.sourceApiValue;
+    if (/\p{Cs}/u.test(sav.value) && sav.valueCleaned === "Public domain ") {
+      pass(`${rel} carries an unpaired surrogate in value and none in valueCleaned`);
+    } else {
+      fail(`${rel} must carry an unpaired surrogate in value and none in valueCleaned`);
     }
   }
   if (expect.extra === "divergence") {
@@ -1064,4 +1155,4 @@ if (failures > 0) {
   console.error(`Conformance FAILED: ${failures} problem(s).`);
   process.exit(1);
 }
-console.log("Conformance passed.");
+console.log(skipped > 0 ? `Conformance passed, but ${skipped} check(s) did not run (SKIP above).` : "Conformance passed.");

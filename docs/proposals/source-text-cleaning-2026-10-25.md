@@ -29,9 +29,11 @@ verbatim one, unchanged, and a cleaned one defined by a function that anyone can
    so a verifier can recompute it and a consumer never has to trust the producer's version.
 3. **clean() only removes characters.** It decodes no HTML, applies no Unicode normalisation and
    changes no whitespace. Removal from a fixed set is idempotent, and every implementation that
-   follows the definition gets the same output.
-4. **Nothing is claimed beyond what clean() does.** It removes invisible characters. Visible text
-   passes through unchanged, including any instruction written in plain sight (section 7).
+   follows the definition gets the same output. Section 3.5 keeps that true for JSON parsers that
+   cannot hold an unpaired surrogate.
+4. **Nothing is claimed beyond what clean() does.** It removes a fixed set of invisible characters,
+   not every invisible character. Visible text passes through unchanged, including any instruction
+   written in plain sight, and so do the invisible characters clean() keeps (section 7).
 
 ## 3. clean(), normatively
 
@@ -59,7 +61,7 @@ clean(s) is the string s with every code point in the set **R** removed. Nothing
 | U+1BCA0..U+1BCA3 | Shorthand format controls |
 | U+1D173..U+1D17A | Musical symbol format controls |
 | U+E0000..U+E0FFF | Tag characters, variation selectors 17 to 256, and the reserved rest of the block |
-| unpaired surrogates | Code units U+D800..U+DFFF that do not form a pair; they are not characters at all. JSON text can carry them as `\u` escapes. |
+| unpaired surrogates | Code units U+D800..U+DFFF that do not form a pair; they are not characters at all. JSON text can carry them as `\u` escapes (section 3.5). |
 
 **How the set is derived**, for implementers who work from Unicode properties: R is
 `Cc` minus {TAB, LF, CR}, union `Default_Ignorable_Code_Point` minus the kept set below, union
@@ -100,12 +102,38 @@ base text and the annotation visible, which fails safe.
 duplicate name is a strong signal in itself, and choosing either member would silently decide which
 reading the consumer sees. With `null`, the consumer sees that no clean reading exists.
 
+### 3.5 Unpaired surrogates in JSON text
+
+JSON text can carry a lone surrogate as a `\uXXXX` escape: RFC 8259 allows it, and I-JSON
+(RFC 7493) forbids it. Many JSON parsers cannot hold the result. Some replace it with U+FFFD, which
+clean() does not remove, and some reject the whole text. A verifier built on such a parser would
+compute a different clean(), or none at all, for a conforming manifest. So:
+
+- Wherever this specification computes clean() or tests a string against R (SC-2, SC-3), an escape
+  for a code unit in U+D800..U+DFFF in the manifest's JSON text means that code unit. It never
+  means U+FFFD.
+- An escape is half of a pair only when a high-surrogate escape (U+D800..U+DBFF) is directly
+  followed by a low-surrogate escape (U+DC00..U+DFFF). Every other surrogate escape is unpaired. A
+  raw character in the text is never half of a pair, since UTF-8 cannot encode a surrogate. This is
+  the pairing rule of section 3.1, read at the level of escapes.
+- A verifier whose parser cannot represent unpaired surrogates MUST still reach the result above.
+  It removes every unpaired surrogate escape from the JSON text of `value` before decoding, then
+  applies clean(). It applies the merge rule of section 3.4 to member names after that removal and
+  before its parser resolves duplicate names. A verifier MUST NOT reject a manifest only because
+  `value` contains an unpaired surrogate escape.
+- U+FFFD written in the text itself, as a character or as an escape, is a visible character and is
+  kept.
+
+The conformance harness carries a reference for the escape-level route and checks that it agrees
+with clean() of the decoded value.
+
 ## 4. Normative rules
 
 - **SC-1 (producer).** In a v0.2 manifest, when `rights.sourceApiValue` is an object, it MUST carry
   `valueCleaned`, equal to clean(`value`).
 - **SC-2 (verifier).** A conforming verifier MUST reject a v0.2 manifest whose `valueCleaned` is not
-  clean(`value`), compared as JSON values (member order is not significant).
+  clean(`value`), compared as JSON values (member order is not significant). Section 3.5 says how
+  to read unpaired surrogate escapes.
 - **SC-3 (producer prose).** In a v0.2 manifest, `verification.ruleContext` MUST NOT contain any
   code point in R. Where it quotes source text, it quotes clean(text). A conforming verifier MUST
   reject a manifest whose `ruleContext` contains a code point in R.
@@ -163,10 +191,21 @@ mistake.
 
 ## 7. What clean() does not do
 
-clean() removes characters that do not render. Stated precisely, so nobody overclaims it:
+clean() removes the code points in R and nothing else. Stated precisely, so nobody overclaims it:
 
 - **Visible instructions survive.** Text written in plain sight, in any script, passes through.
   Nothing in this proposal detects instructions or judges content.
+- **Kept invisible characters survive, in any number.** ZWNJ, ZWJ and U+180B..U+180F (section 3.2)
+  stay wherever they occur, including in long runs. Seven code points that survive in any order are
+  enough to encode hidden data, so a consumer SHOULD NOT treat `valueCleaned` as free of invisible
+  content. Section 11 asks whether to keep them only in context.
+- **Some characters that may not render are not removed.** Private-use characters (U+E000..U+F8FF,
+  U+F0000..U+FFFFD and U+100000..U+10FFFD), the noncharacters (U+FDD0..U+FDEF and the last two code
+  points of every plane, such as U+FFFE and U+FFFF), the line and paragraph separators U+2028 and
+  U+2029, the braille pattern blank U+2800 and the object replacement character U+FFFC are not in
+  R. Private use matters most: depending on the font it renders as nothing or as a box, and it can
+  carry arbitrary data. None of these is default-ignorable, so leaving them follows from the
+  definition. Removing any of them would be a separate decision (section 11).
 - **Look-alike characters survive.** A Cyrillic letter that looks like a Latin one is visible and
   is kept. Confusable detection is a separate problem with a separate answer.
 - **Markup is not decoded.** `&lt;` stays `&lt;`. A consumer that renders HTML has its own escaping
@@ -196,16 +235,23 @@ selector loses the glyph variant it selected while its base character stays.
 | `rights-source-text-cleaned.json` | Valid. A tag-character instruction behind an override and a zero-width space in `value`; `valueCleaned` is `CC0`. |
 | `rights-source-text-joiner-kept.json` | Valid. Persian text with a ZWNJ and a leading byte-order mark; the ZWNJ stays, the mark goes. |
 | `rights-source-text-key-collision.json` | Valid. Two member names that clean to one; `valueCleaned` is `null`. |
+| `rights-source-text-proto-member.json` | Valid. `value` holds a member named `__proto__`, and `valueCleaned` keeps it as a member. |
+| `rights-source-text-proto-merge.json` | Valid. `__proto__` and `__proto__` followed by U+200B clean to one name; `valueCleaned` is `null`. |
+| `rights-source-text-lone-surrogate.json` | Valid. `value` ends in an unpaired high surrogate, as a string cut inside an emoji does; `valueCleaned` drops it. |
 | `negative/rights-source-text-uncleaned.json` | Rejected (SC-2): `valueCleaned` still contains U+202E. |
 | `negative/rights-source-text-altered.json` | Rejected (SC-2): `valueCleaned` changes visible text. |
 | `negative/rights-source-text-collision-merged.json` | Rejected (SC-2): a merge resolved to one member instead of `null`. |
 | `negative/rights-source-text-surrogates-joined.json` | Rejected (SC-2): `value` holds two surrogate halves split by a zero-width space, and `valueCleaned` joins them into one emoji. clean() removes all three. |
+| `negative/rights-source-text-surrogate-replaced.json` | Rejected (SC-2): `valueCleaned` has U+FFFD where `value` has an unpaired surrogate (section 3.5). |
 | `negative/rights-rulecontext-invisible.json` | Rejected (SC-3): `ruleContext` contains U+202E. |
 | `negative/rights-source-text-missing-cleaned.json` | Schema-invalid: `sourceApiValue` without `valueCleaned`. |
 
 The harness also checks clean() itself: the literal set equals its Unicode 16.0 derivation, clean()
 is idempotent, TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors and vowel separator survive, unpaired surrogates do
-not, removing a character between two surrogate halves never joins them, markup and whitespace are untouched, and a member-name merge at any depth gives `null`. Every
+not, removing a character between two surrogate halves never joins them, markup and whitespace are untouched, a member-name merge at any depth gives `null`, a member named
+`__proto__` stays a member, and removing unpaired surrogate escapes before decoding agrees with
+clean() of the decoded value. A cross-check that cannot run, because the runtime has a different
+Unicode version, is reported as skipped rather than passed, and fails the run under CI. Every
 existing v0.2 example with a `sourceApiValue` now carries `valueCleaned`.
 
 ## 10. Versioning
@@ -220,7 +266,7 @@ the start. No published document changes. v0.1 is untouched.
    selected glyph variant. The base characters stay in both cases. Keeping them would leave a
    channel of up to 256 invisible values per position. The reference engine's open input-cleaning
    change (open-museum-mcp #202) currently keeps variation selectors, while this draft removes them.
-   One decision settles both, and the engine and this definition must end up the same.
+   One decision covers both: either they end up the same, or the reason they differ is stated.
 2. **Zero-width space, word joiner and byte-order mark** (U+200B, U+2060, U+FEFF). Removed by
    default. The cost: some sources use U+200B as a line-break hint in scripts written without
    spaces, such as Thai, Lao, Khmer and Burmese; removing it loses break opportunities, not letters.
@@ -230,3 +276,16 @@ the start. No published document changes. v0.1 is untouched.
    identically everywhere. Removed by default.
 4. **Unicode upgrades.** The table is pinned to Unicode 16.0. A later spec version decides whether to
    extend it when Unicode adds default-ignorable code points.
+5. **Keeping ZWNJ, ZWJ and the Mongolian characters only in context.** They are kept wherever they
+   occur (section 7). A remove-only, deterministic alternative would keep them only in context: no
+   kept character directly after another kept character, the Mongolian selectors and vowel
+   separator only after a Mongolian letter, and ZWNJ and ZWJ only between two characters that clean()
+   does not remove. That closes most of the channel, at the cost of a definition that looks at
+   neighbours. Not decided.
+6. **Unpaired surrogates at the producer.** Section 3.5 puts the work on verifiers. The alternative
+   is to require producers to emit I-JSON, so that no manifest carries an unpaired surrogate escape
+   at all. Every JSON parser could then read every manifest, but `value` would no longer be exactly
+   what the source sent when the source sent one. Not decided.
+7. **Private-use characters.** Not removed (section 7). Removing them closes a data channel, and
+   also removes legitimate private-use text, such as characters for scripts Unicode does not yet
+   encode. Not decided.
