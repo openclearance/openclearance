@@ -682,12 +682,13 @@ function pathTokens(field) {
 
 // What a basis input's `field` denotes. A value beginning with '/' is an
 // RFC 6901 pointer into the manifest, the only form for citing a manifest node.
-// A '#' fragment that decodes to a pointer also addresses the manifest, but
-// outside that form. A value in path notation that does not parse completely
-// has no single reading, so it is 'unparsed' and treated as such a citation.
-// Any other value names a source-record field and is also read as a path,
-// because path tooling will resolve it against the manifest. A leading bridge
-// prefix is removed so both carriages compare alike.
+// A '#' fragment that decodes to a pointer, and a '$'-rooted RFC 9535
+// singular query, also address the manifest, but outside that form. A value
+// in path notation that does not parse completely has no single reading, so
+// it is 'unparsed' and treated as such a citation. Any other value names a
+// source-record field and is also read as a path, because path tooling will
+// resolve it against the manifest. A leading bridge prefix is removed so both
+// carriages compare alike.
 function fieldReading(field) {
   const pointerTokens = (p) => p.slice(1).split("/").map((t) => t.replace(/~1/g, "/").replace(/~0/g, "~"));
   let form;
@@ -710,7 +711,7 @@ function fieldReading(field) {
     } else if (opensInPathNotation(field)) {
       tokens = singularQueryTokens(field);
       if (tokens === null) return { form: "unparsed", tokens: null, bridged: false };
-      form = "path";
+      form = field.startsWith("$") ? "query" : "path";
     } else {
       form = "path";
       tokens = pathTokens(field);
@@ -738,15 +739,17 @@ function citesBlock(inputs, block, carriage) {
 }
 
 // Inputs that cite a manifest node outside the pointer form. A fragment
-// pointer and unparsed path notation always do. A path does when it starts
-// in a v0.2 block or the bridge: those names were introduced by v0.2, so the path can only mean the
-// manifest node. A path starting with a v0.1 name (`rights.statement`) cannot
-// be told apart from a same-named source-record field, and is read as one.
+// pointer, a '$'-rooted query and unparsed path notation always do, whatever
+// node they address: each can only mean this manifest. An unrooted path does
+// when it starts in a v0.2 block or the bridge: those names were introduced by
+// v0.2, so the path can only mean the manifest node. An unrooted path starting
+// with a v0.1 name (`rights.statement`) cannot be told apart from a same-named
+// source-record field, and is read as one.
 function nonPointerNodeCitations(inputs) {
   return (inputs ?? []).filter((input) => {
     if (typeof input?.field !== "string") return false;
     const { form, tokens, bridged } = fieldReading(input.field);
-    if (form === "fragment" || form === "unparsed") return true;
+    if (form === "fragment" || form === "query" || form === "unparsed") return true;
     return form === "path" && tokens !== null && (bridged || V02_BLOCK_NAMES.includes(tokens[0]));
   });
 }
@@ -1173,7 +1176,7 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       ["$['designation']", "designation"],
       ["['designation']", "designation"],
       ['["designation"]', "designation"],
-      ["$['desig\\'nation']", null],
+      ["$['desig\\'nation']", FORM],
       [`${bridge}/designation/marks/0`, "designation"],
       [`extensions.${K}.designation.marks.0`, "designation"],
       [`extensions.${K}[designation]`, "designation"],
@@ -1192,7 +1195,8 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       ["/rights/statement", null],
       ["/grantAuthority/collectingSociety/assignedCategories", null],
       ["rights.statement", null],
-      ["$.rights.statement", null],
+      ["$.rights.statement", FORM],
+      ["$['rights']['statement']", FORM],
       ["rights_statement", null],
       ["license.type", null],
       ["designationNote", null],
@@ -1229,7 +1233,10 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       ["designationDate", null],
       ["edm:rights", null],
       ["rights[*]", null],
-      ["$['rights']", null],
+      ["$['rights']", FORM],
+      ["['rights']", null],
+      [".rights.statement", null],
+      ["['grantAuthority']", FORM],
     ];
     const check = (label, manifest, field, block) => {
       manifest.clearance.commercialReproduction.basis.inputs.push({ field, value: null });
@@ -1258,11 +1265,14 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
     const bare = JSON.parse(JSON.stringify(loaded.json));
     delete bare.designation;
     delete bare.evidence;
-    for (const field of ["$", "extensions", bridge]) {
+    for (const field of ["extensions", bridge]) {
       check("no designation or evidence: ", JSON.parse(JSON.stringify(bare)), field, null);
     }
-    // Unparsed path notation is rejected for its form whatever the manifest holds.
-    check("no designation or evidence: ", JSON.parse(JSON.stringify(bare)), "$..*", FORM);
+    // The root in '#' or '$' form, and unparsed path notation, are rejected for
+    // their form whatever the manifest holds.
+    for (const field of ["#", "$", "$..*"]) {
+      check("no designation or evidence: ", JSON.parse(JSON.stringify(bare)), field, FORM);
+    }
     const bridged = JSON.parse(JSON.stringify(loaded.json));
     bridged.extensions = { ...(bridged.extensions ?? {}), [K]: {} };
     for (const name of V02_BLOCK_NAMES) {
@@ -1285,6 +1295,55 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
       [`$.extensions[*]`, FORM],
     ]) {
       check("blocks in the bridge: ", JSON.parse(JSON.stringify(bridged)), field, block);
+    }
+
+    // Equivalent spellings: one node written as a pointer, a '#' fragment, a
+    // '$' query and an unrooted path must draw the same ban, and differ only
+    // where the schema says so: the pointer is the citation form, and an
+    // unrooted path is a manifest citation only when it starts in a v0.2 block.
+    // Each spelling is asserted against the exact problem list.
+    const prefix = "clearance.commercialReproduction.basis.inputs";
+    const spell = {
+      pointer: (t) => (t.length === 0 ? null : `/${t.join("/")}`),
+      fragment: (t) => `#${t.map((x) => `/${x}`).join("")}`,
+      query: (t) => `$${t.map((x) => (/^\d+$/.test(x) ? `[${x}]` : `.${x}`)).join("")}`,
+      path: (t) => (t.length === 0 ? null : t.map((x, i) => (/^\d+$/.test(x) ? `[${x}]` : i === 0 ? x : `.${x}`)).join("")),
+    };
+    const exactly = (label, manifest, field, expected) => {
+      manifest.clearance.commercialReproduction.basis.inputs.push({ field, value: null });
+      const problems = checkV02Consistency(manifest);
+      if (problems.length === expected.length && expected.every((e, i) => problems[i] === e)) {
+        pass(`${label}'${field}' draws exactly: ${expected.length === 0 ? "no problem" : expected.map((e) => e.slice(prefix.length + 1)).join("; ")}`);
+      } else {
+        fail(`${label}'${field}' must draw [${expected.join("; ")}] (found: [${problems.join("; ")}])`);
+      }
+    };
+    for (const [label, manifest] of [["equivalent spellings: ", loaded.json], ["equivalent spellings, no designation or evidence: ", bare]]) {
+      for (const node of [
+        [],
+        ["rights"],
+        ["rights", "statement"],
+        ["designation"],
+        ["designation", "marks", "0"],
+        ["evidence", "0"],
+        ["grantAuthority", "collectingSociety"],
+        ["jurisdictionAssessments", "0"],
+      ]) {
+        const bans = [];
+        const cites = (block) => (node.length === 0 ? manifest[block] !== undefined : node[0] === block);
+        if (cites("designation")) bans.push(`${prefix} cites a designation path`);
+        if (cites("evidence")) bans.push(`${prefix} cites an evidence item`);
+        for (const [form, write] of Object.entries(spell)) {
+          const field = write(node);
+          if (field === null) continue;
+          const outsidePointer =
+            form === "fragment" || form === "query" || (form === "path" && V02_BLOCK_NAMES.includes(node[0]));
+          const expected = outsidePointer
+            ? [...bans, `${prefix} cites a manifest node outside pointer form ('${field}')`]
+            : bans;
+          exactly(label, JSON.parse(JSON.stringify(manifest)), field, expected);
+        }
+      }
     }
   }
 }
