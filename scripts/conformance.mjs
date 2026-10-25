@@ -42,22 +42,30 @@ const skip = (msg) => {
 // JSON text parsed by hand, so that a repeated member name stays visible.
 // JSON.parse keeps the last of two equal names silently. This parser gives the
 // same value, and also records each object whose text repeats a name, which
-// clean() needs (proposal section 3.4). The text is already valid JSON.
+// clean() needs (proposal section 3.4). Callers check the text with
+// JSON.parse first; every loop is still bounded, so text that ends early
+// throws instead of hanging.
 const REPEATS_A_NAME = new WeakSet();
 function parseJsonText(text) {
   let i = 0;
   const skipSpace = () => {
     while (i < text.length && " \t\n\r".includes(text[i])) i += 1;
   };
+  const needMore = () => {
+    if (i >= text.length) throw new SyntaxError("JSON text ends early");
+  };
   const readString = () => {
+    needMore();
     const start = i;
     i += 1;
-    while (text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+    while (i < text.length && text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
+    needMore();
     i += 1;
     return JSON.parse(text.slice(start, i));
   };
   const readValue = () => {
     skipSpace();
+    needMore();
     if (text[i] === "{") {
       i += 1;
       const out = {};
@@ -78,6 +86,7 @@ function parseJsonText(text) {
         // defineProperty, like JSON.parse, makes "__proto__" an own member.
         Object.defineProperty(out, name, { value: member, writable: true, enumerable: true, configurable: true });
         skipSpace();
+        needMore();
         if (text[i++] === "}") return out;
       }
     }
@@ -92,6 +101,7 @@ function parseJsonText(text) {
       for (;;) {
         out.push(readValue());
         skipSpace();
+        needMore();
         if (text[i++] === "]") return out;
       }
     }
@@ -106,8 +116,9 @@ function parseJsonText(text) {
 const readJson = (path) => {
   const text = readFileSync(path, "utf8");
   try {
+    const plain = JSON.parse(text);
     const json = parseJsonText(text);
-    if (!jsonEqual(json, JSON.parse(text))) fail(`${path}: the duplicate-aware parser disagrees with JSON.parse`);
+    if (!jsonEqual(json, plain)) fail(`${path}: the duplicate-aware parser disagrees with JSON.parse`);
     return { text, json };
   } catch (err) {
     fail(`${path} is not valid JSON: ${err.message}`);
@@ -1018,6 +1029,20 @@ if (ctx2Loaded?.json) {
     pass("clean(): a member name the text already repeats yields null at any depth; equal names in different objects do not");
   } else {
     fail("clean(): a member name repeated in the text was resolved instead of yielding null");
+  }
+  const truncated = ['{"a":1,', '{"a', '"abc', '["x",', '{"a":"b\\', "[", "{"];
+  const throwsOnEnd = (t) => {
+    try {
+      parseJsonText(t);
+      return false;
+    } catch {
+      return true;
+    }
+  };
+  if (truncated.every(throwsOnEnd)) {
+    pass("clean(): the duplicate-aware parser throws on JSON text that ends early, rather than hanging");
+  } else {
+    fail("clean(): the duplicate-aware parser accepted JSON text that ends early");
   }
   const literals = [
     '"a\\ud83dz"',
