@@ -271,6 +271,22 @@ decision in section 11. Under an older version it cannot run: it is reported as 
 passed, and it fails the run under CI. Every
 existing v0.2 example with a `sourceApiValue` now carries `valueCleaned`.
 
+**The same cases as JSON text.** The fixtures above are whole manifests, and a harness reads them
+with its own JSON parser, which may already have resolved a repeated name or replaced an unpaired
+surrogate before any check runs. `public/v0.2/conformance/source-text-cleaning.json` gives the
+cases that depend on the text itself as JSON text carried in strings, so an implementation in any
+language passes each one to its own parser and its own escape handling. It has three kinds of
+vector: `clean` (the JSON text of a source value, the JSON text of clean() of it, and the UTF-8
+bytes in hex when the result is a string), `valueCleaned` (the texts of `value` and `valueCleaned`
+with the SC-2 verdict) and `ruleContext` (the text with the SC-3 verdict). It covers the removed and
+kept characters, U+FFFD written as a character and as an escape, every surrogate case of section
+3.5, member-name merges, names the text repeats, and a member named `__proto__`. The harness runs
+every vector twice: through its duplicate-aware parser, and as a verifier whose parser cannot hold
+an unpaired surrogate would, removing unpaired escapes from the source text (a `clean` input and
+`value`) before decoding, detecting them in `valueCleaned` and `ruleContext`, and then parsing the
+text with a parser that rejects any unpaired surrogate that reaches it. Both runs must give the
+expected result.
+
 ## 10. Versioning
 
 v0.2 is not yet published, so the field is added to the v0.2 schema in place and is required from

@@ -1,0 +1,426 @@
+{
+  "title": "Clearance Manifest v0.2: source-text cleaning vectors, at the level of JSON text",
+  "unicode": "16.0",
+  "description": "Language-neutral vectors for clean() (proposal sections 3.1 to 3.5), for SC-2 (valueCleaned is clean(value)) and for SC-3 (ruleContext contains no code point in the removed set). Every input is JSON TEXT, carried as a string, so an implementation feeds it to its own JSON parser and its own escape handling. Escapes inside these texts are significant: an unpaired surrogate escape, a repeated member name and a raw character beside an escape each test something a parser can hide.",
+  "format": {
+    "clean": "input is the JSON text of a source value. cleaned is the JSON text of clean(input): null when cleaning merges two member names or the text repeats one. cleanedUtf8 is the UTF-8 encoding of the expected string, in lowercase hex, present when the result is a string. Compare results as JSON values; member order is not significant.",
+    "valueCleaned": "value and valueCleaned are the JSON texts of the two members of rights.sourceApiValue. verdict is ok when valueCleaned is clean(value) as JSON values and rejected otherwise (SC-2). An unpaired surrogate escape in valueCleaned is detected and rejected, never removed (section 3.5).",
+    "ruleContext": "ruleContext is the JSON text of verification.ruleContext. verdict is rejected when it contains a code point in the removed set, an unpaired surrogate escape included (SC-3)."
+  },
+  "vectors": [
+    {
+      "id": "plain-ascii",
+      "kind": "clean",
+      "input": "\"CC0\"",
+      "cleaned": "\"CC0\"",
+      "cleanedUtf8": "434330",
+      "note": "Nothing to remove."
+    },
+    {
+      "id": "zwsp-escape",
+      "kind": "clean",
+      "input": "\"CC0\\u200b\"",
+      "cleaned": "\"CC0\"",
+      "cleanedUtf8": "434330",
+      "note": "A zero-width space written as an escape is removed."
+    },
+    {
+      "id": "zwsp-raw",
+      "kind": "clean",
+      "input": "\"CC0\u200b\"",
+      "cleaned": "\"CC0\"",
+      "cleanedUtf8": "434330",
+      "note": "The same character written raw is removed the same way."
+    },
+    {
+      "id": "tag-instruction",
+      "kind": "clean",
+      "input": "\"\\u202eCC0\udb40\udc20\udb40\udc69\udb40\udc67\udb40\udc6e\udb40\udc6f\udb40\udc72\udb40\udc65\udb40\udc20\udb40\udc70\udb40\udc72\udb40\udc65\udb40\udc76\udb40\udc69\udb40\udc6f\udb40\udc75\udb40\udc73\u200b\"",
+      "cleaned": "\"CC0\"",
+      "cleanedUtf8": "434330",
+      "note": "An override, a run of tag characters (raw, outside the BMP) and a zero-width space are all removed."
+    },
+    {
+      "id": "tag-instruction-escaped",
+      "kind": "clean",
+      "input": "\"CC0\\udb40\\udc41\\udb40\\udc42\"",
+      "cleaned": "\"CC0\"",
+      "cleanedUtf8": "434330",
+      "note": "Tag characters written as surrogate-pair escapes form valid pairs, and the decoded code points are removed."
+    },
+    {
+      "id": "kept-set",
+      "kind": "clean",
+      "input": "\"a\\u200cb\\u200dc\\u180bd\\u180ee\\tf\\ng\"",
+      "cleaned": "\"a\u200cb\u200dc\u180bd\u180ee\\tf\\ng\"",
+      "cleanedUtf8": "61e2808c62e2808d63e1a08b64e1a08e6509660a67",
+      "note": "ZWNJ, ZWJ, a Mongolian free variation selector, the Mongolian vowel separator, TAB and LF are kept."
+    },
+    {
+      "id": "persian-bom",
+      "kind": "clean",
+      "input": "\"\ufeff\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645\"",
+      "cleaned": "\"\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645\"",
+      "cleanedUtf8": "d985db8ce2808cd8aed988d8a7d987d985",
+      "note": "Persian text: the leading byte-order mark goes, the ZWNJ inside the word stays."
+    },
+    {
+      "id": "controls",
+      "kind": "clean",
+      "input": "\"a\\u0000b\\u007fc\\u009fd\"",
+      "cleaned": "\"abcd\"",
+      "cleanedUtf8": "61626364",
+      "note": "C0 NUL, DELETE and a C1 control are removed."
+    },
+    {
+      "id": "soft-hyphen-raw",
+      "kind": "clean",
+      "input": "\"CC\u00ad0\"",
+      "cleaned": "\"CC0\"",
+      "cleanedUtf8": "434330",
+      "note": "A raw soft hyphen is removed."
+    },
+    {
+      "id": "visible-kept",
+      "kind": "clean",
+      "input": "\"<b>&amp;</b> e\\u0301  \ufffc\u2800\ue000\\u2028\"",
+      "cleaned": "\"<b>&amp;</b> e\u0301  \ufffc\u2800\ue000\u2028\"",
+      "cleanedUtf8": "3c623e26616d703b3c2f623e2065cc812020efbfbce2a080ee8080e280a8",
+      "note": "No HTML decoding, no normalisation, no whitespace change; U+FFFC, U+2800, private use and U+2028 are not in the removed set."
+    },
+    {
+      "id": "fffd-escape",
+      "kind": "clean",
+      "input": "\"x\\ufffd\"",
+      "cleaned": "\"x\ufffd\"",
+      "cleanedUtf8": "78efbfbd",
+      "note": "U+FFFD written as an escape is a visible character and is kept."
+    },
+    {
+      "id": "fffd-raw",
+      "kind": "clean",
+      "input": "\"x\ufffd\"",
+      "cleaned": "\"x\ufffd\"",
+      "cleanedUtf8": "78efbfbd",
+      "note": "U+FFFD written raw is kept."
+    },
+    {
+      "id": "lone-high-at-end",
+      "kind": "clean",
+      "input": "\"Public domain \\ud83d\"",
+      "cleaned": "\"Public domain \"",
+      "cleanedUtf8": "5075626c696320646f6d61696e20",
+      "note": "An unpaired high-surrogate escape, as a string cut inside an emoji leaves, is removed."
+    },
+    {
+      "id": "lone-high-inside",
+      "kind": "clean",
+      "input": "\"a\\ud83dz\"",
+      "cleaned": "\"az\"",
+      "cleanedUtf8": "617a",
+      "note": "An unpaired high-surrogate escape between letters is removed."
+    },
+    {
+      "id": "lone-low",
+      "kind": "clean",
+      "input": "\"a\\udc00z\"",
+      "cleaned": "\"az\"",
+      "cleanedUtf8": "617a",
+      "note": "An unpaired low-surrogate escape is removed."
+    },
+    {
+      "id": "pair-escaped",
+      "kind": "clean",
+      "input": "\"\\ud83d\\ude00\"",
+      "cleaned": "\"\ud83d\ude00\"",
+      "cleanedUtf8": "f09f9880",
+      "note": "A high escape directly followed by a low escape is a pair and is kept."
+    },
+    {
+      "id": "pair-escaped-uppercase",
+      "kind": "clean",
+      "input": "\"\\uD83D\\uDE00\"",
+      "cleaned": "\"\ud83d\ude00\"",
+      "cleanedUtf8": "f09f9880",
+      "note": "Hex digits are case-insensitive."
+    },
+    {
+      "id": "halves-split",
+      "kind": "clean",
+      "input": "\"\\ud83d\\u200b\\ude00\"",
+      "cleaned": "\"\"",
+      "cleanedUtf8": "",
+      "note": "Removing a character between two halves never joins them: all three go."
+    },
+    {
+      "id": "halves-reversed",
+      "kind": "clean",
+      "input": "\"\\ude00\\ud83d\"",
+      "cleaned": "\"\"",
+      "cleanedUtf8": "",
+      "note": "A low escape followed by a high escape is not a pair; both go."
+    },
+    {
+      "id": "high-high-low",
+      "kind": "clean",
+      "input": "\"\\ud83d\\ud83d\\ude00\"",
+      "cleaned": "\"\ud83d\ude00\"",
+      "cleanedUtf8": "f09f9880",
+      "note": "The first high escape is unpaired; the second pairs with the low escape."
+    },
+    {
+      "id": "escaped-backslash",
+      "kind": "clean",
+      "input": "\"\\\\ud83d\"",
+      "cleaned": "\"\\\\ud83d\"",
+      "cleanedUtf8": "5c7564383364",
+      "note": "An escaped backslash followed by 'ud83d' is six visible characters, not an escape."
+    },
+    {
+      "id": "escape-then-raw-emoji",
+      "kind": "clean",
+      "input": "\"\\ud83d\ud83d\ude00\"",
+      "cleaned": "\"\ud83d\ude00\"",
+      "cleanedUtf8": "f09f9880",
+      "note": "A raw character is never half of a pair, so the high escape before a raw emoji is unpaired."
+    },
+    {
+      "id": "escape-mix",
+      "kind": "clean",
+      "input": "\"\\u0041\\n\\ud800\"",
+      "cleaned": "\"A\\n\"",
+      "cleanedUtf8": "410a",
+      "note": "Ordinary escapes decode as usual; the trailing unpaired escape goes."
+    },
+    {
+      "id": "nested",
+      "kind": "clean",
+      "input": "{\"k\\u200b\":[\"v\\u202e\",1,null,{\"x\":\"\\ufeffy\"}]}",
+      "cleaned": "{\"k\":[\"v\",1,null,{\"x\":\"y\"}]}",
+      "note": "Member names and every string at any depth are cleaned; numbers and null are unchanged."
+    },
+    {
+      "id": "scalars",
+      "kind": "clean",
+      "input": "[1,true,false,null,-0.5,\"x\\u0000\"]",
+      "cleaned": "[1,true,false,null,-0.5,\"x\"]",
+      "note": "Numbers, booleans and null are unchanged."
+    },
+    {
+      "id": "name-cleaned",
+      "kind": "clean",
+      "input": "{\"lic\u200bense\":\"CC\u00ad0\"}",
+      "cleaned": "{\"license\":\"CC0\"}",
+      "note": "A member name is cleaned like any string."
+    },
+    {
+      "id": "name-merge",
+      "kind": "clean",
+      "input": "{\"license\":\"CC0\",\"license\\u2063\":\"CC BY-NC\"}",
+      "cleaned": "null",
+      "note": "Two member names that clean to one: the whole value cleans to null."
+    },
+    {
+      "id": "name-merge-nested",
+      "kind": "clean",
+      "input": "[{\"a\":1,\"a\\u2063\":2}]",
+      "cleaned": "null",
+      "note": "A merge at any depth makes the whole value null."
+    },
+    {
+      "id": "text-repeats-name",
+      "kind": "clean",
+      "input": "{\"license\":\"CC0\",\"license\":\"CC BY-NC\"}",
+      "cleaned": "null",
+      "note": "The text repeats a member name: null, whichever member a parser would keep."
+    },
+    {
+      "id": "text-repeats-name-equal-values",
+      "kind": "clean",
+      "input": "{\"k\":[{\"a\":1,\"a\":1}]}",
+      "cleaned": "null",
+      "note": "A repeat with equal values, at depth, is still a repeat."
+    },
+    {
+      "id": "same-name-different-objects",
+      "kind": "clean",
+      "input": "{\"a\":1,\"b\":{\"a\":2}}",
+      "cleaned": "{\"a\":1,\"b\":{\"a\":2}}",
+      "note": "Equal names in different objects are not a repeat."
+    },
+    {
+      "id": "proto-member",
+      "kind": "clean",
+      "input": "{\"__proto__\":{\"a\":1},\"b\":2}",
+      "cleaned": "{\"__proto__\":{\"a\":1},\"b\":2}",
+      "note": "A member named __proto__ is an ordinary member and stays."
+    },
+    {
+      "id": "proto-merge",
+      "kind": "clean",
+      "input": "{\"__proto__\":1,\"__proto__\\u200b\":2}",
+      "cleaned": "null",
+      "note": "A merge through a member named __proto__ is a merge."
+    },
+    {
+      "id": "name-lone-surrogate",
+      "kind": "clean",
+      "input": "{\"a\\udc00\":1}",
+      "cleaned": "{\"a\":1}",
+      "note": "An unpaired escape in a member name is removed."
+    },
+    {
+      "id": "name-merge-after-surrogate",
+      "kind": "clean",
+      "input": "{\"a\":1,\"a\\ud800\":2}",
+      "cleaned": "null",
+      "note": "Removing an unpaired escape from a name can merge it with another name: null."
+    },
+    {
+      "id": "ok-string",
+      "kind": "valueCleaned",
+      "value": "\"CC0\\u200b\"",
+      "valueCleaned": "\"CC0\"",
+      "verdict": "ok",
+      "note": "valueCleaned is clean(value)."
+    },
+    {
+      "id": "ok-member-order",
+      "kind": "valueCleaned",
+      "value": "{\"a\":1,\"b\\u200b\":2}",
+      "valueCleaned": "{\"b\":2,\"a\":1}",
+      "verdict": "ok",
+      "note": "Compared as JSON values: member order is not significant."
+    },
+    {
+      "id": "ok-merge-null",
+      "kind": "valueCleaned",
+      "value": "{\"a\":1,\"a\\u2063\":2}",
+      "valueCleaned": "null",
+      "verdict": "ok",
+      "note": "A merge gives null, and valueCleaned says so."
+    },
+    {
+      "id": "ok-repeat-null",
+      "kind": "valueCleaned",
+      "value": "{\"a\":1,\"a\":2}",
+      "valueCleaned": "null",
+      "verdict": "ok",
+      "note": "A repeated name gives null."
+    },
+    {
+      "id": "ok-lone-surrogate",
+      "kind": "valueCleaned",
+      "value": "\"Public domain \\ud83d\"",
+      "valueCleaned": "\"Public domain \"",
+      "verdict": "ok",
+      "note": "The unpaired escape is gone from valueCleaned."
+    },
+    {
+      "id": "rejected-uncleaned",
+      "kind": "valueCleaned",
+      "value": "\"CC0\\u202e\"",
+      "valueCleaned": "\"CC0\\u202e\"",
+      "verdict": "rejected",
+      "note": "valueCleaned still contains U+202E."
+    },
+    {
+      "id": "rejected-altered",
+      "kind": "valueCleaned",
+      "value": "\"CC0\\u200b\"",
+      "valueCleaned": "\"CC BY\"",
+      "verdict": "rejected",
+      "note": "valueCleaned changes visible text."
+    },
+    {
+      "id": "rejected-merge-resolved",
+      "kind": "valueCleaned",
+      "value": "{\"a\":1,\"a\\u2063\":2}",
+      "valueCleaned": "{\"a\":1}",
+      "verdict": "rejected",
+      "note": "A merge resolved to one member instead of null."
+    },
+    {
+      "id": "rejected-repeat-resolved",
+      "kind": "valueCleaned",
+      "value": "{\"a\":1,\"a\":2}",
+      "valueCleaned": "{\"a\":2}",
+      "verdict": "rejected",
+      "note": "value repeats a name, and valueCleaned keeps the last member instead of null."
+    },
+    {
+      "id": "rejected-cleaned-repeats-name",
+      "kind": "valueCleaned",
+      "value": "{\"a\":1}",
+      "valueCleaned": "{\"a\":1,\"a\":1}",
+      "verdict": "rejected",
+      "note": "The text of valueCleaned repeats a name, which clean() never produces."
+    },
+    {
+      "id": "rejected-surrogate-replaced",
+      "kind": "valueCleaned",
+      "value": "\"x\\ud800\"",
+      "valueCleaned": "\"x\\ufffd\"",
+      "verdict": "rejected",
+      "note": "valueCleaned has U+FFFD where value has an unpaired surrogate escape."
+    },
+    {
+      "id": "rejected-cleaned-lone-surrogate",
+      "kind": "valueCleaned",
+      "value": "\"x\\ufffd\"",
+      "valueCleaned": "\"x\\ud800\"",
+      "verdict": "rejected",
+      "note": "valueCleaned holds an unpaired surrogate escape in place of a real U+FFFD; it is detected, never removed."
+    },
+    {
+      "id": "rejected-halves-joined",
+      "kind": "valueCleaned",
+      "value": "\"\\ud83d\\u200b\\ude00\"",
+      "valueCleaned": "\"\\ud83d\\ude00\"",
+      "verdict": "rejected",
+      "note": "valueCleaned joins two halves that clean() removes."
+    },
+    {
+      "id": "ok-plain",
+      "kind": "ruleContext",
+      "ruleContext": "\"Licence field reads CC0.\"",
+      "verdict": "ok",
+      "note": "Plain prose."
+    },
+    {
+      "id": "ok-kept",
+      "kind": "ruleContext",
+      "ruleContext": "\"Field reads \u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645.\"",
+      "verdict": "ok",
+      "note": "ZWNJ is not in the removed set."
+    },
+    {
+      "id": "ok-pair",
+      "kind": "ruleContext",
+      "ruleContext": "\"Field reads \\ud83d\\ude00.\"",
+      "verdict": "ok",
+      "note": "A valid surrogate-pair escape is an ordinary character."
+    },
+    {
+      "id": "rejected-override",
+      "kind": "ruleContext",
+      "ruleContext": "\"Field reads \\u202eCC0.\"",
+      "verdict": "rejected",
+      "note": "U+202E is in the removed set."
+    },
+    {
+      "id": "rejected-raw-zwsp",
+      "kind": "ruleContext",
+      "ruleContext": "\"Field reads CC0\u200b.\"",
+      "verdict": "rejected",
+      "note": "A raw zero-width space is in the removed set."
+    },
+    {
+      "id": "rejected-lone-surrogate",
+      "kind": "ruleContext",
+      "ruleContext": "\"Field reads \\ud800.\"",
+      "verdict": "rejected",
+      "note": "An unpaired surrogate escape is in the removed set; it is detected, never removed."
+    }
+  ]
+}

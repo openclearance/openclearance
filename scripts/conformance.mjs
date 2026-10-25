@@ -11,7 +11,9 @@
 //   9. v0.2 rights vocabulary (grantAuthority / designation / evidence): schema +
 //      context checks, the reference cross-field consistency checks (the authority
 //      gate, the designation and evidence input bans, evidence-pointer resolution,
-//      the protected-name guard), and the fixture vectors for each.
+//      the protected-name guard), and the fixture vectors for each, plus the
+//      source-text cleaning vectors given as JSON text
+//      (public/v0.2/conformance/source-text-cleaning.json).
 
 import { readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -38,6 +40,9 @@ const skip = (msg) => {
   skipped += 1;
   console.log(`  SKIP  ${msg}`);
 };
+
+// The Unicode version the clean() table is pinned to (proposal section 3.1).
+const PINNED_UNICODE = "16.0";
 
 // JSON text parsed by hand, so that a repeated member name stays visible.
 // JSON.parse keeps the last of two equal names silently. This parser gives the
@@ -165,6 +170,7 @@ function verifyManifest(manifest) {
 }
 
 console.log("Clearance Manifest v0.1 conformance");
+console.log(`Runtime: Node ${process.version}, Unicode ${process.versions.unicode} (clean() table pinned to Unicode ${PINNED_UNICODE})`);
 console.log("");
 
 // ---------------------------------------------------------------------------
@@ -659,6 +665,10 @@ function dropUnpairedSurrogateEscapes(literal) {
 const repeatsAName = (value) =>
   value !== null && typeof value === "object" && (REPEATS_A_NAME.has(value) || Object.values(value).some(repeatsAName));
 
+// SC-2: valueCleaned must be clean(value), compared as JSON values, and its
+// text must not repeat a name, since clean() never produces one.
+const valueCleanedFails = (value, cleaned) => repeatsAName(cleaned) || !jsonEqual(cleaned, cleanJson(value));
+
 function jsonEqual(a, b) {
   if (a === b) return true;
   if (Array.isArray(a) || Array.isArray(b)) {
@@ -839,7 +849,7 @@ function checkV02Consistency(manifest) {
       sav &&
       typeof sav === "object" &&
       "valueCleaned" in sav &&
-      (repeatsAName(sav.valueCleaned) || !jsonEqual(sav.valueCleaned, cleanJson(sav.value)))
+      valueCleanedFails(sav.value, sav.valueCleaned)
     ) {
       problems.push("rights.sourceApiValue.valueCleaned is not clean(value)");
     }
@@ -1064,6 +1074,103 @@ if (ctx2Loaded?.json) {
     pass("clean(): removing unpaired-surrogate escapes before decoding gives clean() of the decoded value; substituting U+FFFD does not");
   } else {
     fail("clean(): the escape-level route and clean() of the decoded value disagree");
+  }
+}
+
+// --- JSON-text vectors ---
+// public/v0.2/conformance/source-text-cleaning.json carries clean(), SC-2 and
+// SC-3 cases as JSON text with expected results, so an implementation in any
+// language runs them through its own parser. Each vector runs here twice:
+// through the duplicate-aware parser, and through the escape-level route of
+// section 3.5 as a verifier whose parser cannot hold an unpaired surrogate
+// would take it: unpaired escapes are removed from input and value before
+// decoding and detected in valueCleaned and ruleContext, and the text is then
+// parsed by a parser that rejects any unpaired surrogate that reaches it.
+// Both routes must give the expected result.
+{
+  const rel = "public/v0.2/conformance/source-text-cleaning.json";
+  const loaded = readJson(join(root, rel));
+  const hasUnpairedEscape = (text) => dropUnpairedSurrogateEscapes(text) !== text;
+  const holdsSurrogate = (x) =>
+    typeof x === "string"
+      ? /\p{Cs}/u.test(x)
+      : x !== null && typeof x === "object" && Object.entries(x).some(([k, y]) => /\p{Cs}/u.test(k) || holdsSurrogate(y));
+  const strictParse = (text) => {
+    const parsed = parseJsonText(text);
+    if (holdsSurrogate(parsed)) throw new Error("an unpaired surrogate reached the parser");
+    return parsed;
+  };
+  const utf8 = (s) => Buffer.from(s, "utf8").toString("hex");
+  const isText = (x) => typeof x === "string";
+  if (loaded) {
+    const { unicode, vectors } = loaded.json;
+    const ids = new Set();
+    const malformed = [];
+    const wrong = { clean: [], valueCleaned: [], ruleContext: [] };
+    for (const v of Array.isArray(vectors) ? vectors : []) {
+      const shapeOk =
+        isText(v.id) &&
+        !ids.has(v.id) &&
+        isText(v.note) &&
+        (v.kind === "clean"
+          ? isText(v.input) && isText(v.cleaned) && (v.cleanedUtf8 === undefined || /^([0-9a-f]{2})*$/.test(v.cleanedUtf8))
+          : v.kind === "valueCleaned"
+            ? isText(v.value) && isText(v.valueCleaned) && ["ok", "rejected"].includes(v.verdict)
+            : v.kind === "ruleContext" && isText(v.ruleContext) && ["ok", "rejected"].includes(v.verdict));
+      ids.add(v.id);
+      if (!shapeOk) {
+        malformed.push(v.id ?? "(no id)");
+        continue;
+      }
+      try {
+        if (v.kind === "clean") {
+          const expected = parseJsonText(v.cleaned);
+          const direct = cleanJson(parseJsonText(v.input));
+          const viaEscapes = cleanJson(strictParse(dropUnpairedSurrogateEscapes(v.input)));
+          const bytesOk = typeof expected === "string" ? v.cleanedUtf8 === utf8(expected) : v.cleanedUtf8 === undefined;
+          if (repeatsAName(expected) || !bytesOk || !jsonEqual(direct, expected) || !jsonEqual(viaEscapes, expected)) {
+            wrong.clean.push(v.id);
+          }
+        } else if (v.kind === "valueCleaned") {
+          const direct = valueCleanedFails(parseJsonText(v.value), parseJsonText(v.valueCleaned));
+          const viaEscapes =
+            hasUnpairedEscape(v.valueCleaned) ||
+            valueCleanedFails(strictParse(dropUnpairedSurrogateEscapes(v.value)), strictParse(v.valueCleaned));
+          const expected = v.verdict === "rejected";
+          if (direct !== expected || viaEscapes !== expected) wrong.valueCleaned.push(v.id);
+        } else {
+          const text = parseJsonText(v.ruleContext);
+          const direct = typeof text !== "string" || hasRemovable(text);
+          let viaEscapes = hasUnpairedEscape(v.ruleContext);
+          if (!viaEscapes) {
+            const strict = strictParse(v.ruleContext);
+            viaEscapes = typeof strict !== "string" || hasRemovable(strict);
+          }
+          const expected = v.verdict === "rejected";
+          if (direct !== expected || viaEscapes !== expected) wrong.ruleContext.push(v.id);
+        }
+      } catch (err) {
+        wrong[v.kind].push(`${v.id} (${err.message})`);
+      }
+    }
+    const count = (kind) => (Array.isArray(vectors) ? vectors.filter((v) => v.kind === kind).length : 0);
+    if (unicode === PINNED_UNICODE && malformed.length === 0 && count("clean") > 0 && count("valueCleaned") > 0 && count("ruleContext") > 0) {
+      pass(`${rel}: ${vectors.length} vectors, well formed, unique ids, pinned to Unicode ${PINNED_UNICODE}`);
+    } else {
+      fail(`${rel}: unicode must be ${PINNED_UNICODE}, every kind present, and each vector well formed (malformed: ${malformed.join(", ") || "none"})`);
+    }
+    const label = {
+      clean: "clean() of the input text, with the expected UTF-8 bytes for string results",
+      valueCleaned: "SC-2 verdicts on valueCleaned",
+      ruleContext: "SC-3 verdicts on ruleContext",
+    };
+    for (const kind of Object.keys(wrong)) {
+      if (wrong[kind].length === 0) {
+        pass(`${rel}: ${count(kind)} ${label[kind]}, the same through the parser and through the escape-level route`);
+      } else {
+        fail(`${rel}: ${label[kind]} wrong for ${wrong[kind].join(", ")}`);
+      }
+    }
   }
 }
 
