@@ -40,7 +40,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "verification.jurisdictions",
+            "field": "/verification/jurisdictions",
             "value": [
               "EU",
               "CH"
@@ -56,7 +56,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": "http://creativecommons.org/publicdomain/mark/1.0/"
           }
         ],
@@ -69,7 +69,7 @@
         "rule": "default-deny",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": "http://creativecommons.org/publicdomain/mark/1.0/"
           }
         ],
@@ -110,11 +110,11 @@
         "rule": "faithful-reproduction-unprotected",
         "inputs": [
           {
-            "field": "work.yearEnd",
+            "field": "/work/yearEnd",
             "value": 1299
           },
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": "http://creativecommons.org/publicdomain/mark/1.0/"
           }
         ],
@@ -129,7 +129,7 @@
         "rule": "non-original-photograph-protected",
         "inputs": [
           {
-            "field": "work.medium",
+            "field": "/work/medium",
             "value": "Stonepaste, polychrome enamel"
           }
         ],

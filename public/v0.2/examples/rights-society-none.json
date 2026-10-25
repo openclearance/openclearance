@@ -41,7 +41,7 @@
         "rule": "cc0-grants-commercial",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": "https://creativecommons.org/publicdomain/zero/1.0/"
           }
         ],
@@ -54,7 +54,7 @@
         "rule": "cc0-grants-derivatives",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": "https://creativecommons.org/publicdomain/zero/1.0/"
           }
         ],
@@ -67,7 +67,7 @@
         "rule": "cc0-waives-attribution",
         "inputs": [
           {
-            "field": "rights.statement",
+            "field": "/rights/statement",
             "value": "https://creativecommons.org/publicdomain/zero/1.0/"
           }
         ],
