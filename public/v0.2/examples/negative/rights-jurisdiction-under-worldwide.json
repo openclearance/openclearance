@@ -27,7 +27,8 @@
     "statement": "http://creativecommons.org/publicdomain/mark/1.0/",
     "sourceApiValue": {
       "field": "license",
-      "value": "PDM"
+      "value": "PDM",
+      "valueCleaned": "PDM"
     },
     "imageOpenAccess": true,
     "metadataOpenAccess": true,

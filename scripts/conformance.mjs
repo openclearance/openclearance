@@ -420,7 +420,10 @@ for (const file of negFiles) {
 //        (RFC 6901) must resolve to a node in the manifest;
 //      - the protected-name guard: productNaming.protectedNameUsePermitted may be
 //        true only on a mark self-claimed as both of-the-class and authorised,
-//        under a confirmed legal basis (never voluntary-code, never unknown).
+//        under a confirmed legal basis (never voluntary-code, never unknown);
+//      - source-text cleaning (v0.2 manifests): rights.sourceApiValue.valueCleaned
+//        must equal clean(value), and verification.ruleContext must contain no
+//        character that clean() removes.
 //    Deliberately NOT checked: locator liveness (a dead evidence locator changes
 //    nothing and this harness performs no network fetch by design), and the
 //    consumer-side duties that have no single-manifest observable (territorial
@@ -492,6 +495,59 @@ function resolvePointer(doc, pointer) {
     }
   }
   return node;
+}
+
+// Source-text cleaning (v0.2). clean() removes every code point in the set
+// below and changes nothing else: no HTML decoding, no normalisation, no
+// whitespace changes, so it is idempotent and any verifier recomputes it
+// exactly. The set is listed literally, pinned to Unicode 16.0:
+//   - C0 and C1 controls except TAB, LF and CR;
+//   - Default_Ignorable_Code_Point, except ZWNJ, ZWJ and the Mongolian
+//     U+180B..U+180F (orthographic in Persian, Indic and Mongolian scripts and
+//     in emoji sequences);
+//   - the interlinear annotation characters U+FFF9..U+FFFB;
+//   - unpaired surrogates.
+const CLEAN_REMOVED =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u200B\u200E\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF0-\uFFFB\u{1BCA0}-\u{1BCA3}\u{1D173}-\u{1D17A}\u{E0000}-\u{E0FFF}]|\p{Cs}/gu;
+const cleanText = (s) => s.replace(CLEAN_REMOVED, "");
+const hasRemovable = (s) => s.replace(CLEAN_REMOVED, "") !== s;
+
+// clean() over a JSON value: every string, member names included. Cleaning
+// that would merge two member names of one object yields null for the whole
+// value, so a hidden duplicate can never be silently resolved to one reading.
+const MERGED = Symbol("merged");
+function cleanJsonInner(value) {
+  if (typeof value === "string") return cleanText(value);
+  if (Array.isArray(value)) {
+    const out = value.map(cleanJsonInner);
+    return out.includes(MERGED) ? MERGED : out;
+  }
+  if (value !== null && typeof value === "object") {
+    const out = {};
+    for (const [name, member] of Object.entries(value)) {
+      const cleanName = cleanText(name);
+      const cleanMember = cleanJsonInner(member);
+      if (cleanMember === MERGED || Object.prototype.hasOwnProperty.call(out, cleanName)) return MERGED;
+      out[cleanName] = cleanMember;
+    }
+    return out;
+  }
+  return value;
+}
+function cleanJson(value) {
+  const out = cleanJsonInner(value);
+  return out === MERGED ? null : out;
+}
+
+// JSON data-model equality (member order is not significant).
+function jsonEqual(a, b) {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => jsonEqual(x, b[i]));
+  }
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+  const ka = Object.keys(a);
+  return ka.length === Object.keys(b).length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && jsonEqual(a[k], b[k]));
 }
 
 // The v0.1-safe bridge: a v0.1 manifest carries the v0.2 blocks inside
@@ -656,6 +712,19 @@ function checkV02Consistency(manifest) {
     }
   }
 
+  // Source-text cleaning applies to v0.2 manifests; a v0.1 manifest (including
+  // one carrying v0.2 blocks on the bridge) has no valueCleaned to check.
+  if (manifest.specVersion === "0.2") {
+    const sav = manifest.rights?.sourceApiValue;
+    if (sav && typeof sav === "object" && "valueCleaned" in sav && !jsonEqual(sav.valueCleaned, cleanJson(sav.value))) {
+      problems.push("rights.sourceApiValue.valueCleaned is not clean(value)");
+    }
+    const ruleContext = manifest.verification?.ruleContext;
+    if (typeof ruleContext === "string" && hasRemovable(ruleContext)) {
+      problems.push("verification.ruleContext contains a character that clean() removes");
+    }
+  }
+
   return problems;
 }
 
@@ -727,8 +796,73 @@ if (ctx2Loaded?.json) {
         fail(`v0.2 context: '${term}' did not expand to ${iri}; found: ${Object.keys(top).join(", ")}`);
       }
     }
+    const savSample = {
+      "@context": [CONTEXT_URL_V02],
+      rights: { sourceApiValue: { field: "license", value: "CC0", valueCleaned: "CC0" } },
+    };
+    const savExpanded = await jsonld.expand(savSample, { documentLoader: localLoaderV02 });
+    const sav = savExpanded[0]?.[`${VOCAB_BASE}rights`]?.[0]?.[`${VOCAB_BASE}sourceApiValue`]?.[0] ?? {};
+    if (`${VOCAB_BASE_V02}valueCleaned` in sav) {
+      pass(`v0.2 context: 'valueCleaned' mints in the v0.2 vocabulary (${VOCAB_BASE_V02}valueCleaned)`);
+    } else {
+      fail(`v0.2 context: 'valueCleaned' did not expand to ${VOCAB_BASE_V02}valueCleaned; found: ${Object.keys(sav).join(", ")}`);
+    }
   } catch (err) {
     fail(`v0.2 JSON-LD expansion error: ${err.message}`);
+  }
+}
+
+// --- clean(): the literal set, its derivation, and its defining properties ---
+{
+  const removed = [];
+  for (let cp = 0; cp <= 0x10ffff; cp++) {
+    if (cp >= 0xd800 && cp <= 0xdfff) continue;
+    if (hasRemovable(String.fromCodePoint(cp))) removed.push(cp);
+  }
+  // Under Unicode 16.0 the literal set must equal its property definition.
+  if (process.versions.unicode === "16.0") {
+    const kept = new Set([0x09, 0x0a, 0x0d, 0x180b, 0x180c, 0x180d, 0x180e, 0x180f, 0x200c, 0x200d]);
+    const derived = [];
+    for (let cp = 0; cp <= 0x10ffff; cp++) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      const ch = String.fromCodePoint(cp);
+      const inSet =
+        (/^\p{Cc}$/u.test(ch) || /^\p{Default_Ignorable_Code_Point}$/u.test(ch) || (cp >= 0xfff9 && cp <= 0xfffb)) &&
+        !kept.has(cp);
+      if (inSet) derived.push(cp);
+    }
+    if (derived.length === removed.length && derived.every((cp, i) => cp === removed[i])) {
+      pass(`clean(): the literal set equals its Unicode 16.0 property definition (${removed.length} code points)`);
+    } else {
+      fail("clean(): the literal set differs from its Unicode 16.0 property definition");
+    }
+  } else {
+    pass(`clean(): property cross-check skipped, runtime Unicode is ${process.versions.unicode}, the set is pinned to 16.0`);
+  }
+
+  const every = removed.map((cp) => String.fromCodePoint(cp)).join("");
+  const sample = `a\tb\nc\r${every}\u200C\u200D\u180E d\u00E9\uD800z\uDFFF`;
+  const once = cleanText(sample);
+  if (cleanText(once) === once && !hasRemovable(once)) {
+    pass("clean(): idempotent, and its output contains nothing it would remove");
+  } else {
+    fail("clean(): not idempotent, or its output still contains a removable character");
+  }
+  if (once === "a\tb\nc\r\u200C\u200D\u180E d\u00E9z") {
+    pass("clean(): keeps TAB, LF, CR, ZWNJ, ZWJ and the Mongolian selectors; drops unpaired surrogates");
+  } else {
+    fail(`clean(): unexpected output ${JSON.stringify(once)}`);
+  }
+  if (cleanText("<b>&amp;</b>") === "<b>&amp;</b>" && cleanText("e\u0301") === "e\u0301" && cleanText("  a  ") === "  a  ") {
+    pass("clean(): no HTML decoding, no normalisation, no whitespace change");
+  } else {
+    fail("clean(): changed markup, normalisation or whitespace");
+  }
+  const nested = { "k\u200B": ["v\u202E", 1, null, { x: "\uFEFFy" }] };
+  if (jsonEqual(cleanJson(nested), { k: ["v", 1, null, { x: "y" }] }) && cleanJson({ a: 1, "a\u2063": 2 }) === null && cleanJson([{ a: 1, "a\u2063": 2 }]) === null) {
+    pass("clean(): recurses into arrays, objects and member names; a member-name merge at any depth yields null");
+  } else {
+    fail("clean(): JSON recursion or member-name merge handling is wrong");
   }
 }
 
@@ -759,6 +893,14 @@ const V02_VECTORS = {
   "negative/rights-jurisdiction-core-overgrant.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-partial-matrix.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-under-worldwide.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  "rights-source-text-cleaned.json": { schema: "0.2", valid: true, verdict: "ok", extra: "cleaned" },
+  "rights-source-text-joiner-kept.json": { schema: "0.2", valid: true, verdict: "ok", extra: "joiner-kept" },
+  "rights-source-text-key-collision.json": { schema: "0.2", valid: true, verdict: "ok", extra: "key-collision" },
+  "negative/rights-source-text-uncleaned.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-altered.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-source-text-collision-merged.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "valueCleaned is not clean(value)" },
+  "negative/rights-rulecontext-invisible.json": { schema: "0.2", valid: true, verdict: "rejected", reason: "ruleContext contains a character" },
+  "negative/rights-source-text-missing-cleaned.json": { schema: "0.2", valid: false },
 };
 
 for (const [rel, expect] of Object.entries(V02_VECTORS)) {
@@ -786,7 +928,9 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
 
   const problems = checkV02Consistency(manifest);
   if (expect.verdict === "rejected") {
-    if (problems.length > 0) {
+    if (expect.reason && !problems.some((p) => p.includes(expect.reason))) {
+      fail(`${rel} was REJECTED for the wrong reason: expected '${expect.reason}', got: ${problems.join("; ") || "nothing"}`);
+    } else if (problems.length > 0) {
       pass(`${rel} is correctly REJECTED as inconsistent (${problems[0]})`);
     } else {
       fail(`${rel} was expected to be REJECTED but the consistency check found no problem`);
@@ -808,6 +952,30 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
   }
 
   // Named follow-on checks per vector.
+  if (expect.extra === "cleaned") {
+    const sav = manifest.rights.sourceApiValue;
+    const hidden = [...sav.value].some((ch) => ch.codePointAt(0) >= 0xe0000);
+    if (hidden && sav.valueCleaned === "CC0") {
+      pass(`${rel} keeps the tag-character instruction in value as evidence and removes it from valueCleaned`);
+    } else {
+      fail(`${rel} must carry the hidden instruction in value and only 'CC0' in valueCleaned`);
+    }
+  }
+  if (expect.extra === "joiner-kept") {
+    const sav = manifest.rights.sourceApiValue;
+    if (sav.valueCleaned.includes("\u200C") && !sav.valueCleaned.includes("\uFEFF")) {
+      pass(`${rel} keeps the orthographic ZWNJ and drops the byte-order mark`);
+    } else {
+      fail(`${rel} must keep ZWNJ and drop U+FEFF in valueCleaned`);
+    }
+  }
+  if (expect.extra === "key-collision") {
+    if (manifest.rights.sourceApiValue.valueCleaned === null) {
+      pass(`${rel} carries valueCleaned null where two member names clean to one`);
+    } else {
+      fail(`${rel} must carry valueCleaned null for a member-name merge`);
+    }
+  }
   if (expect.extra === "divergence") {
     const core = manifest.clearance.commercialReproduction.permitted;
     const eu = manifest.jurisdictionAssessments.find((e) => e.jurisdiction === "EU");
