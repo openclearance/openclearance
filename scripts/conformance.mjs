@@ -403,8 +403,9 @@ for (const file of negFiles) {
 // 9. v0.2 rights vocabulary: grantAuthority (authority axis), designation
 //    (designation axis), evidence (the general evidence pointer).
 //
-//    The v0.2 manifest schema carries the frozen v0.1 body unchanged and adds the
-//    three axes as optional top-level blocks. Cross-field rules that JSON Schema
+//    The v0.2 manifest schema carries the frozen v0.1 body (widened only by
+//    verification.jurisdictions and the attributionType values 'possibly' and
+//    'inscribed') and adds the three axes as optional top-level blocks. Cross-field rules that JSON Schema
 //    cannot express are enforced by the reference consistency check below; a
 //    manifest violating one is inconsistent and a conforming verifier MUST treat
 //    it as REJECTED:
@@ -759,6 +760,15 @@ const V02_VECTORS = {
   "negative/rights-jurisdiction-core-overgrant.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-partial-matrix.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-under-worldwide.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  // attributionType values added in v0.2: each validates under v0.2, a value outside
+  // the enum is still refused, and v0.1 (frozen) refuses the new values. errorAt pins
+  // the cause: every schema error must be the enum check on that instance path, so a
+  // fixture that starts failing for another reason (a broken @context, say) goes red.
+  "attribution-possibly.json": { schema: "0.2", valid: true, verdict: "ok" },
+  "attribution-inscribed.json": { schema: "0.2", valid: true, verdict: "ok" },
+  "negative/attribution-unknown-value.json": { schema: "0.2", valid: false, errorAt: { path: "/work/artist/attributionType", keyword: "enum" } },
+  "negative/attribution-possibly-under-v01.json": { schema: "0.1", valid: false, errorAt: { path: "/work/artist/attributionType", keyword: "enum" } },
+  "negative/attribution-inscribed-under-v01.json": { schema: "0.1", valid: false, errorAt: { path: "/work/artist/attributionType", keyword: "enum" } },
 };
 
 for (const [rel, expect] of Object.entries(V02_VECTORS)) {
@@ -770,11 +780,21 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
   const schemaOk = validate(manifest);
 
   if (!expect.valid) {
-    if (!schemaOk) {
-      pass(`${rel} correctly fails v${expect.schema} schema validation`);
-    } else {
+    if (schemaOk) {
       fail(`${rel} unexpectedly passed v${expect.schema} schema validation`);
+      continue;
     }
+    if (expect.errorAt) {
+      const { path, keyword } = expect.errorAt;
+      const stray = validate.errors.filter((e) => e.instancePath !== path || e.keyword !== keyword);
+      if (stray.length > 0) {
+        fail(`${rel} fails v${expect.schema} schema validation, but not only at ${path} (${keyword}): ${ajv.errorsText(stray)}`);
+        continue;
+      }
+      pass(`${rel} correctly fails v${expect.schema} schema validation, only at ${path} (${keyword})`);
+      continue;
+    }
+    pass(`${rel} correctly fails v${expect.schema} schema validation`);
     continue;
   }
 
