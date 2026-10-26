@@ -5,16 +5,16 @@
   "type": "ClearanceManifest",
   "specVersion": "0.1",
   "work": {
-    "id": "example:portrait-of-a-merchant",
-    "title": "Portrait of a Merchant",
+    "id": "example:presentation-cup",
+    "title": "Presentation Cup",
     "artist": {
-      "name": "Example Sitter",
+      "name": "Example Dedicatee",
       "attributionType": "inscribed"
     },
     "displayDate": "1622",
     "yearStart": 1622,
     "yearEnd": 1622,
-    "medium": "Oil on canvas"
+    "medium": "Silver"
   },
   "source": {
     "museum": {
@@ -84,8 +84,8 @@
     }
   },
   "citation": {
-    "full": "Unknown artist, Portrait of a Merchant, 1622, inscribed 'Example Sitter'. Example Museum of Art. CC0.",
-    "caption": "Portrait of a Merchant, 1622, inscribed 'Example Sitter'. Example Museum of Art (CC0).",
-    "short": "Portrait of a Merchant, 1622, Example Museum of Art"
+    "full": "Unknown maker, Presentation Cup, 1622, inscribed 'Example Dedicatee'. Example Museum of Art. CC0.",
+    "caption": "Presentation Cup, 1622, inscribed 'Example Dedicatee'. Example Museum of Art (CC0).",
+    "short": "Presentation Cup, 1622, Example Museum of Art"
   }
 }
