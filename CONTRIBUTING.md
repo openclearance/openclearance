@@ -78,7 +78,7 @@ So the publish flow is: open a PR, get it reviewed and merged, then `git pull` o
 
 - Spec and site prose: editorial, restrained, technical. No marketing language. Do not use em-dashes or en-dashes; use colons, commas, or parentheses instead. `→` is the only special glyph used in copy. Rights language stays non-absolute ("helps establish", "supports"), never an absolute guarantee. Match the existing voice.
 - JSON examples: realistic-looking values; do not fabricate institution names or dates beyond what an example needs.
-- Scripts: standard Node ESM, dependency-light. The conformance check uses only `ajv`, `ajv-formats`, and `node:crypto`.
+- Scripts: standard Node ESM, dependency-light. The conformance check uses `ajv`, `ajv-formats`, `jsonld`, and `entities` (for decoding HTML character references), plus Node built-ins.
 
 ## License
 

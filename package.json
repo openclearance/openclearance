@@ -19,6 +19,7 @@
   "devDependencies": {
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
+    "entities": "8.1.0",
     "jsonld": "^9.0.0"
   }
 }
