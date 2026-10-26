@@ -730,6 +730,57 @@ if (ctx2Loaded?.json) {
   } catch (err) {
     fail(`v0.2 JSON-LD expansion error: ${err.message}`);
   }
+
+  // Every term the v0.1 context defines must expand identically under the v0.2
+  // context: same IRI, same value coercion, same scoped terms. The term list is
+  // read from the v0.1 context itself, so a term added there is covered without
+  // editing this check. Each term is expanded alone, as the top-level member of
+  // a probe document, under each context, and the two results compared.
+  // Keywords and prefix definitions are skipped: '@vocab' differs on purpose
+  // (undefined terms mint in the v0.2 vocabulary) and prefixes are not terms a
+  // manifest uses.
+  const v01Terms = ctxDoc?.["@context"] ?? {};
+  const v02Terms = ctx2Loaded.json["@context"] ?? {};
+  const isPrefix = (def) => typeof def === "string" && /^[a-z][a-z0-9+.-]*:\/\//i.test(def);
+  const probeValue = (def) => {
+    // A '@type' alias resolves a relative value against '@vocab', which differs
+    // on purpose; an absolute IRI tests the alias alone.
+    if (def === "@type") return "https://probe.example/Type";
+    const scoped = def && typeof def === "object" ? def["@context"] : null;
+    return scoped ? Object.fromEntries(Object.keys(scoped).map((k) => [k, "probe"])) : "probe";
+  };
+  const expandUnder = async (contextUrl, term, value) =>
+    jsonld.expand(
+      { "@context": [contextUrl], [term]: value },
+      { documentLoader: localLoaderV02, base: "https://probe.example/" },
+    );
+  let carried = 0;
+  const drifted = [];
+  try {
+    for (const [term, def] of Object.entries(v01Terms)) {
+      if (term.startsWith("@") || isPrefix(def)) continue;
+      carried += 1;
+      if (!(term in v02Terms)) {
+        drifted.push(`'${term}' is not defined in the v0.2 context`);
+        continue;
+      }
+      const value = probeValue(def);
+      const under01 = JSON.stringify(await expandUnder(CONTEXT_URL, term, value));
+      const under02 = JSON.stringify(await expandUnder(CONTEXT_URL_V02, term, value));
+      if (under01 !== under02) {
+        drifted.push(`'${term}' expands to ${under02} under v0.2, ${under01} under v0.1`);
+      }
+    }
+    if (carried === 0) {
+      fail("v0.2 context: no v0.1 terms found to compare (v0.1 context not loaded?)");
+    } else if (drifted.length === 0) {
+      pass(`v0.2 context: all ${carried} v0.1 terms expand exactly as they do under v0.1`);
+    } else {
+      for (const d of drifted) fail(`v0.2 context: carried term drifted: ${d}`);
+    }
+  } catch (err) {
+    fail(`v0.2 JSON-LD carried-term expansion error: ${err.message}`);
+  }
 }
 
 // --- Fixture vectors ---
