@@ -77,10 +77,10 @@ const tracks = [
           'The default envelope. A byte-exact SHA-256 over the payload string lets any consumer recompute the hash and confirm nothing changed. Integrity, not authenticity. VerificationState UNVERIFIED_SIGNAL.',
       },
       {
-        status: 'live',
+        status: 'design',
         label: 'Tier-1, delegated attestation',
         detail:
-          'A delegated attestor signs the manifest on behalf of the named, keyless actor, under a did:web identity, carried in a C2PA envelope over the same byte-exact payload. Verification is fail-closed: a tampered or actor-mismatched signature is rejected, never downgraded to an unsigned record. VerificationState ATTESTED_DELEGATE. Live and verifiable on Open Museum; the v0.2 envelope schema is being published here.',
+          'A delegated attestor signs the manifest on behalf of the named, keyless actor, under a did:web identity, carried as a C2PA assertion over the same byte-exact payload. Verification is fail-closed: a tampered or actor-mismatched signature is rejected, never downgraded to an unsigned record. VerificationState ATTESTED_DELEGATE. Open Museum has started signing records for a first set of works under its own did:web identity, naming the institution whose determination it carries. That signed record is not yet published or carried as a C2PA manifest, so today only Open Museum can check its signature; publishing the record and its schema comes next.',
       },
       {
         status: 'planned',
@@ -121,10 +121,10 @@ const tracks = [
       'How a manifest travels with a work and how a consumer checks it. The honest bar is recovery for registered works, not unstrippable prevention.',
     items: [
       {
-        status: 'live',
+        status: 'design',
         label: 'Embedded C2PA credentials',
         detail:
-          'For works whose bytes are delivered by the producer, the manifest travels inside the image as a C2PA Content Credential (hard binding). Live for Tier-1 attested works on Open Museum.',
+          'For works whose bytes are delivered by the producer, the manifest travels inside the image as a C2PA Content Credential (hard binding). Not yet shipped: Open Museum holds its signed records on its own servers today, not inside the image.',
       },
       {
         status: 'planned',
