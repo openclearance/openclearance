@@ -403,8 +403,9 @@ for (const file of negFiles) {
 // 9. v0.2 rights vocabulary: grantAuthority (authority axis), designation
 //    (designation axis), evidence (the general evidence pointer).
 //
-//    The v0.2 manifest schema carries the frozen v0.1 body unchanged and adds the
-//    three axes as optional top-level blocks. Cross-field rules that JSON Schema
+//    The v0.2 manifest schema carries the frozen v0.1 body (widened only by
+//    verification.jurisdictions and the attributionType values 'possibly' and
+//    'inscribed') and adds the three axes as optional top-level blocks. Cross-field rules that JSON Schema
 //    cannot express are enforced by the reference consistency check below; a
 //    manifest violating one is inconsistent and a conforming verifier MUST treat
 //    it as REJECTED:
@@ -759,6 +760,13 @@ const V02_VECTORS = {
   "negative/rights-jurisdiction-core-overgrant.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-partial-matrix.json": { schema: "0.2", valid: true, verdict: "rejected" },
   "negative/rights-jurisdiction-under-worldwide.json": { schema: "0.2", valid: true, verdict: "rejected" },
+  // attributionType values added in v0.2: each validates under v0.2, a value outside
+  // the enum is still refused, and v0.1 (frozen) refuses the new values.
+  "attribution-possibly.json": { schema: "0.2", valid: true, verdict: "ok" },
+  "attribution-inscribed.json": { schema: "0.2", valid: true, verdict: "ok" },
+  "negative/attribution-unknown-value.json": { schema: "0.2", valid: false },
+  "negative/attribution-possibly-under-v01.json": { schema: "0.1", valid: false },
+  "negative/attribution-inscribed-under-v01.json": { schema: "0.1", valid: false },
 };
 
 for (const [rel, expect] of Object.entries(V02_VECTORS)) {

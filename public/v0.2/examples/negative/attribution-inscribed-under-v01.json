@@ -1,0 +1,91 @@
+{
+  "@context": [
+    "https://openclearance.org/v0.1/context.jsonld"
+  ],
+  "type": "ClearanceManifest",
+  "specVersion": "0.1",
+  "work": {
+    "id": "example:portrait-of-a-merchant",
+    "title": "Portrait of a Merchant",
+    "artist": {
+      "name": "Example Sitter",
+      "attributionType": "inscribed"
+    },
+    "displayDate": "1622",
+    "yearStart": 1622,
+    "yearEnd": 1622,
+    "medium": "Oil on canvas"
+  },
+  "source": {
+    "museum": {
+      "code": "artist-direct",
+      "name": "Artist-submitted record"
+    }
+  },
+  "rights": {
+    "statement": null,
+    "sourceApiValue": null,
+    "imageOpenAccess": false,
+    "metadataOpenAccess": true,
+    "confidence": "high"
+  },
+  "clearance": {
+    "commercialReproduction": {
+      "permitted": true,
+      "basis": {
+        "rule": "cc0-grants-commercial",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": "https://creativecommons.org/publicdomain/zero/1.0/"
+          }
+        ],
+        "summary": "Claims a grant the extension itself records as assigned to the collecting society."
+      }
+    },
+    "derivatives": {
+      "permitted": false,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No open rights statement applies; derivative use is not cleared."
+      }
+    },
+    "attributionRequired": {
+      "required": true,
+      "basis": {
+        "rule": "default-deny",
+        "inputs": [
+          {
+            "field": "rights.statement",
+            "value": null
+          }
+        ],
+        "summary": "No waiver applies; attribution is required."
+      }
+    }
+  },
+  "verification": {
+    "determinedBy": {
+      "actor": "Third Example Artist",
+      "role": "artist"
+    },
+    "tool": "clearance-engine/reference",
+    "determinedAt": "2026-08-01T12:00:00Z",
+    "ruleContext": "v0.2-conformance-fixture",
+    "determinationSource": {
+      "type": "rights-gate-default",
+      "retrievedAt": "2026-08-01T11:59:00Z"
+    }
+  },
+  "citation": {
+    "full": "Unknown artist, Portrait of a Merchant, 1622, inscribed 'Example Sitter'. Example Museum of Art. CC0.",
+    "caption": "Portrait of a Merchant, 1622, inscribed 'Example Sitter'. Example Museum of Art (CC0).",
+    "short": "Portrait of a Merchant, 1622, Example Museum of Art"
+  }
+}
