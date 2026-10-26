@@ -1,6 +1,6 @@
 {
   "title": "Provenance source markup: text form and interpretation-string vectors",
-  "description": "Vectors for the text form of an HTML source string (section 4) and for the check that an interpretation string is text (section 3, PM-2). Every '\u003c', '\u003e' and '\u0026' in this file is written as a JSON escape (\\u003c, \\u003e, \\u0026), so the file holds no literal markup: decode the JSON to get the strings.",
+  "description": "Vectors for the text form of an HTML source string (section 4) and for the check that an interpretation string is text (section 3, P-11). Every '\u003c', '\u003e' and '\u0026' in this file is written as a JSON escape (\\u003c, \\u003e, \\u0026), so the file holds no literal markup: decode the JSON to get the strings.",
   "format": {
     "textForm": "source is a source string as published, read as HTML. text is its text form. Compare code point for code point.",
     "check": "value is an interpretation string. verdict is text when no '\u003c' in it is followed by an ASCII letter, '/', '!' or '?', and markup otherwise.",
@@ -84,13 +84,43 @@
       "id": "comment-holding-gt",
       "source": "A\u003c!-- x \u003e y --\u003eB",
       "text": "AB",
-      "shows": "Comments are removed before tags, so a '\u003e' inside a comment does not end it early."
+      "shows": "Inside a comment a '\u003e' does not end it; only the comment's own end does."
     },
     {
       "id": "comment-unterminated",
       "source": "A\u003c!-- no end",
       "text": "A!-- no end",
-      "shows": "An unterminated comment is not removed as a comment; the tag rule removes its '\u003c' alone."
+      "shows": "A comment that never ends is read as markup that ends at its first '\u003e'. With no '\u003e', it loses its '\u003c' alone."
+    },
+    {
+      "id": "comment-end-bang",
+      "source": "x\u003c!-- y --!\u003e visible --\u003ez",
+      "text": "x visible --\u003ez",
+      "shows": "HTML also ends a comment at '--!\u003e', so the text after it is kept."
+    },
+    {
+      "id": "comment-abrupt",
+      "source": "A\u003c!--\u003eB--\u003eC",
+      "text": "AB--\u003eC",
+      "shows": "'\u003c!--\u003e' is a complete, empty comment in HTML, so the text after it is kept."
+    },
+    {
+      "id": "comment-abrupt-dash",
+      "source": "A\u003c!---\u003eB--\u003eC",
+      "text": "AB--\u003eC",
+      "shows": "'\u003c!---\u003e' is a complete, empty comment too."
+    },
+    {
+      "id": "comment-bang-too-early",
+      "source": "A\u003c!--!\u003eB--\u003eC",
+      "text": "AC",
+      "shows": "The '--' before '!\u003e' must follow the opening '\u003c!--', so '\u003c!--!\u003e' does not end the comment."
+    },
+    {
+      "id": "comment-unterminated-reread",
+      "source": "A\u003c!-- \u003cb\u003ex\u003c/b\u003e y",
+      "text": "Ax y",
+      "shows": "A comment that never ends is read as markup that ends at its first '\u003e', and the text after that '\u003e' is read as usual."
     },
     {
       "id": "tag-unclosed",
@@ -120,13 +150,19 @@
       "id": "nested-rebuild",
       "source": "\u003c\u003cb\u003eb\u003ex",
       "text": "x",
-      "shows": "Removing an inner tag can form an outer one; removal repeats until nothing changes."
+      "shows": "Removing an inner tag can form an outer one, which is read as markup as it forms."
     },
     {
       "id": "nested-rebuild-deep",
       "source": "\u003c\u003c\u003cb\u003eb\u003eb\u003ex",
       "text": "x",
-      "shows": "Three levels deep: each pass forms the next tag, so a fixed number of passes is not enough."
+      "shows": "Three levels deep: each removal forms the next tag, so a fixed number of passes would not be enough."
+    },
+    {
+      "id": "nested-formed-tag-read-whole",
+      "source": "\u003c\u003cb\u003eb\u003cb\u003ex",
+      "text": "x",
+      "shows": "Markup that a removal forms is read as it forms: removing the first '\u003cb\u003e' leaves '\u003cb\u003cb\u003e', which HTML reads as one tag."
     },
     {
       "id": "split-script",

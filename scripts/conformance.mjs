@@ -891,11 +891,12 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
 //
 //     A provenance source string is carried as published, markup included; an
 //     interpretation string is text. Checked here:
-//      - the text form of an HTML source string: comments and tags removed to a
-//        fixed point, character references decoded once as HTML decodes them in
-//        text, then comments and tags removed to a fixed point again;
-//      - the interpretation-string check (PM-2): no '<' followed by an ASCII
+//      - the text form of an HTML source string: comments and tags removed in
+//        one left-to-right read, character references decoded once as HTML
+//        decodes them in text, then comments and tags removed again;
+//      - the interpretation-string check (P-11): no '<' followed by an ASCII
 //        letter, '/', '!' or '?';
+//      - that the text form takes time linear in the length of its input;
 //      - that every text form passes that check, over the vectors and over a
 //        generated set of markup-shaped strings;
 //      - that the vectors file carries no literal '<', '>' or '&'.
@@ -904,53 +905,82 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
 console.log("");
 console.log("Provenance source markup (proposal)");
 
-// '<' at i opens markup when the HTML tokenizer would leave the data state there.
-const opensMarkup = (s, i) => {
-  if (s[i] !== "<" || i + 1 >= s.length) return false;
-  const c = s[i + 1];
-  return (c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || c === "/" || c === "!" || c === "?";
-};
+// '<' followed by one of these opens markup when the HTML tokenizer reads it.
+const isOpenerChar = (c) =>
+  (c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || c === "/" || c === "!" || c === "?";
 
-// Remove each '<!--' through the first '-->' after it; an unterminated comment
-// is left for the tag rule.
-const removeComments = (s) => {
-  let out = "";
-  let i = 0;
-  for (;;) {
-    const open = s.indexOf("<!--", i);
-    const close = open < 0 ? -1 : s.indexOf("-->", open + 4);
-    if (close < 0) return out + s.slice(i);
-    out += s.slice(i, open);
-    i = close + 3;
-  }
-};
+const opensMarkup = (s, i) => s[i] === "<" && i + 1 < s.length && isOpenerChar(s[i + 1]);
 
-// One left-to-right pass: markup closed by a '>' is removed through it, an
-// unclosed one loses its '<' alone. Once no '>' remains, none is searched for
-// again, so the pass stays linear.
-const tagPass = (s) => {
-  let out = "";
-  let i = 0;
-  let closeLeft = true;
-  while (i < s.length) {
-    if (opensMarkup(s, i)) {
-      const close = closeLeft ? s.indexOf(">", i + 1) : -1;
-      if (close < 0) closeLeft = false;
-      i = close < 0 ? i + 1 : close + 1;
-      continue;
-    }
-    out += s[i];
-    i += 1;
-  }
-  return out;
-};
+// The same tests on UTF-16 code units. Every character the rules look at is
+// ASCII, so working on code units never splits a surrogate pair.
+const LT = 0x3c, GT = 0x3e, BANG = 0x21, DASH = 0x2d;
+const isOpenerUnit = (u) =>
+  (u >= 0x41 && u <= 0x5a) || (u >= 0x61 && u <= 0x7a) || u === 0x2f || u === BANG || u === 0x3f;
 
+// One left-to-right read into an output buffer. Markup is removed from the end of
+// the buffer as soon as it is complete, so markup that a removal forms is read
+// as it forms, and each character is read at most twice.
 const stripMarkup = (s) => {
-  for (;;) {
-    const next = tagPass(removeComments(s));
-    if (next === s) return next;
-    s = next;
+  const out = new Uint16Array(s.length);
+  let n = 0;
+  let open = -1;
+  let comments = true;
+  // Markup open at out[open] is a comment once it reads '<!--'.
+  const isComment = () =>
+    n - open >= 4 && out[open + 1] === BANG && out[open + 2] === DASH && out[open + 3] === DASH;
+  // A comment ends at the '>' just read when HTML ends it there: '<!-->' and
+  // '<!--->', or a '>' after '--' or '--!' that follows the opening '<!--'.
+  const commentEnds = () => {
+    const j = n - 1 - open;
+    return j === 4
+      || (j === 5 && out[open + 4] === DASH)
+      || (j >= 6 && out[n - 3] === DASH && out[n - 2] === DASH)
+      || (j >= 7 && out[n - 4] === DASH && out[n - 3] === DASH && out[n - 2] === BANG);
+  };
+  const read = (units, from, to) => {
+    for (let i = from; i < to; i += 1) {
+      const u = units[i];
+      out[n] = u;
+      n += 1;
+      if (open < 0) {
+        if (n >= 2 && out[n - 2] === LT && isOpenerUnit(u)) open = n - 2;
+      } else if (u === GT && (!(comments && isComment()) || commentEnds())) {
+        n = open;
+        open = -1;
+      }
+    }
+  };
+  const units = new Uint16Array(s.length);
+  for (let i = 0; i < s.length; i += 1) units[i] = s.charCodeAt(i);
+  read(units, 0, units.length);
+  // A comment that never ends is read again as markup that ends at its first '>'.
+  // No comment opening after it can end either, so comments stay off.
+  if (open >= 0 && comments && isComment()) {
+    const rest = out.slice(open, n);
+    n = open;
+    open = -1;
+    comments = false;
+    read(rest, 0, rest.length);
   }
+  let units2 = out.subarray(0, n);
+  if (open >= 0) {
+    // Unclosed markup loses its '<'. Then, from the end back, each '<' whose next
+    // kept character opens markup is dropped, which ends any chain a drop forms.
+    const kept = new Uint16Array(n);
+    let k = n;
+    for (let i = n - 1; i >= 0; i -= 1) {
+      if (i === open) continue;
+      if (out[i] === LT && k < n && isOpenerUnit(kept[k])) continue;
+      k -= 1;
+      kept[k] = out[i];
+    }
+    units2 = kept.subarray(k);
+  }
+  let text = "";
+  for (let i = 0; i < units2.length; i += 8192) {
+    text += String.fromCharCode.apply(null, units2.subarray(i, i + 8192));
+  }
+  return text;
 };
 
 const textForm = (s) => stripMarkup(decodeHTML(stripMarkup(s)));
@@ -1014,7 +1044,7 @@ const isText = (s) => {
   // Generated strings: every text form passes the check, and a string with no
   // markup opener and no '&' is its own text form. A fixed seed keeps the run
   // reproducible.
-  const pieces = ["<", "<<", ">", "/","!", "?", "-", "--", "<!--", "-->", "a", "B", "1", " ", "=",
+  const pieces = ["<", "<<", ">", "/","!", "?", "-", "--", "<!--", "-->", "--!>", "a", "B", "1", " ", "=",
     "&", ";", "lt;", "gt;", "amp;", "#60;", "#x3C;", "é", "<b>", "</div>"];
   let seed = 0x2545f491;
   const nextInt = (n) => {
@@ -1042,20 +1072,33 @@ const isText = (s) => {
   } else {
     pass("generated strings with no markup and no reference are their own text form");
   }
-  // A pass is linear: 40000 unclosed tags must cost about four times 10000,
-  // not sixteen times.
-  const timeOf = (n) => {
-    const s = "<a".repeat(n);
-    const start = process.hrtime.bigint();
-    tagPass(s);
-    return Number(process.hrtime.bigint() - start);
+  // The text form is linear. A ratio of two timings is too noisy to gate on, so
+  // each shape gets a budget instead: at these sizes linear work takes tens of
+  // milliseconds, and any quadratic step (a repeated pass, a rescan, a search
+  // from each '<') takes seconds to minutes. The shapes are the ones such a
+  // step would make slow.
+  const SHAPE_REPEATS = 100000;
+  const BUDGET_MS = 1500;
+  const shapes = {
+    "nested tags": (n) => "<".repeat(n) + "a>".repeat(n),
+    "unclosed tags": (n) => "<a".repeat(n),
+    "a run of '<' before a letter": (n) => "<".repeat(n) + "a",
+    "unterminated comments": (n) => "<!--".repeat(n),
+    "unterminated comments holding tags": (n) => "<!-- <b".repeat(n),
+    "nested escaped tags": (n) => "&lt;".repeat(n / 4) + "a&gt;".repeat(n / 4),
   };
-  timeOf(1000);
-  const ratio = Math.min(...[0, 1, 2].map(() => timeOf(40000))) / Math.min(...[0, 1, 2].map(() => timeOf(10000)));
-  if (ratio < 8) {
-    pass(`a tag pass over unclosed tags grows linearly (x4 input, x${ratio.toFixed(1)} time)`);
-  } else {
-    fail(`a tag pass over unclosed tags grows faster than linearly (x4 input, x${ratio.toFixed(1)} time)`);
+  textForm(shapes["nested tags"](1000));
+  for (const [name, make] of Object.entries(shapes)) {
+    const input = make(SHAPE_REPEATS);
+    const start = process.hrtime.bigint();
+    textForm(input);
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    const what = `the text form of ${name} (${input.length} characters) took ${ms.toFixed(0)} ms`;
+    if (ms <= BUDGET_MS) {
+      pass(`${what}, within ${BUDGET_MS} ms`);
+    } else {
+      fail(`${what}, over the ${BUDGET_MS} ms budget for linear work`);
+    }
   }
   if (!patternCheck) {
     fail("interpretationTextPattern was not compiled, so generated strings were not checked against it");

@@ -88,11 +88,24 @@ requires.
 ### 4.1 Definition
 
 ```text
-strip(s):   repeat until s no longer changes:
-              1. remove comments: each "<!--" through the first "-->" after it.
-                 An "<!--" with no "-->" after it is left to step 2.
-              2. one pass, left to right: at each "<" followed by an ASCII letter, "/", "!" or "?",
-                 remove through the next ">"; if there is no later ">", remove the "<" alone.
+strip(s):   read s once, left to right, appending each character to an output buffer.
+            An opener is a "<" in the buffer followed in the buffer by an ASCII letter, "/", "!" or "?".
+            After appending each character:
+              - if no markup is open and the buffer ends with an opener, markup opens at that "<";
+              - if markup is open and the character is ">" that ends it, remove the buffer from the
+                markup's "<" to the end; no markup is open.
+            Markup ends at its first ">", except a comment (markup whose first four characters are
+            "<!--"), which ends at:
+              - a ">" that is its fifth character ("<!-->"), or its sixth after "<!---" ("<!--->"), or
+              - a ">" after "--" or "--!" that begins after the opening "<!--".
+            At the end of s, if markup is still open:
+              1. if it is a comment, take the buffer from its "<" to the end out of the buffer, and read
+                 those characters again by the same rules, appending to what is left, this time with no
+                 comments: "<!--" is markup that ends at its first ">";
+              2. if markup is then still open, remove its "<", and then, from the end of the buffer back
+                 to its start, remove each "<" whose next remaining character is an ASCII letter, "/",
+                 "!" or "?".
+            The result is the buffer.
 
 decode(s):  decode character references once, as the HTML standard decodes them in text.
 
@@ -113,12 +126,21 @@ which HTML keeps. The vectors include those cases, so the difference fails a tes
 
 ### 4.2 Why each step is there
 
-- **Comments before tags.** A comment can hold a `>`. Removed as a tag, `A<!-- x > y -->B` would leave `A y -->B`.
-  Removed as a comment, it leaves `AB`.
-- **Repeat to a fixed point.** Removing one tag can join text into another: one pass over `<<b>b>x` leaves `<b>x`.
-  A fixed number of passes is not enough, since each level of nesting needs one more.
+- **One read, removing at the end of the buffer.** Removing one tag can join text into another: in `<<b>b>x`,
+  removing `<b>` leaves `<b>x`. Because the check for an opener runs on the buffer, markup that a removal forms is
+  read as it forms, just as a parser reading the result would read it, and `<<b>b>x` gives `x`. Nesting of any depth
+  needs no further pass. In `<<b>b<b>x`, removing the first `<b>` leaves `<b<b>`, which HTML reads as one tag, so it
+  goes whole.
+- **Comments end where HTML ends them.** A comment can hold a `>`, so it does not end at its first one:
+  `A<!-- x > y -->B` gives `AB`. HTML also ends a comment at `--!>`, and at once in `<!-->` and `<!--->`, so
+  `x<!-- y --!> visible -->z` gives `x visible -->z` and keeps the text HTML shows.
+- **A comment that never ends is read as other markup.** HTML would hide everything after an unterminated `<!--`.
+  Read as markup that ends at its first `>`, it loses no more than an unclosed tag does: `A<!-- <b>x</b> y` gives
+  `Ax y`. A comment that opens after it cannot end either, since any end would have ended the first, so the second
+  read can leave comments out.
 - **An unclosed tag loses only its `<`.** The text after it is kept (`Sale <lot 12]: Paris` gives
-  `Sale lot 12]: Paris`). Without the `<`, nothing in it can open markup.
+  `Sale lot 12]: Paris`). The sweep from the end then removes any `<` that the removal leaves in front of a letter,
+  `/`, `!` or `?` (in `<<a` both go), so nothing left can open markup.
 - **Decode in the middle, then strip again.** Escaped markup is markup once decoded: `&lt;b&gt;bold&lt;/b&gt;` gives
   `bold`. An escaped `<` that is text stays text: `5 &lt; 6` gives `5 < 6`.
 - **Decode once.** `&amp;lt;b&amp;gt;` is the text `&lt;b&gt;`, and decoding it a second time would change real text
@@ -126,7 +148,8 @@ which HTML keeps. The vectors include those cases, so the difference fails a tes
 
 ### 4.3 Properties
 
-- Deterministic, and linear per pass. The number of passes grows with nesting depth.
+- Deterministic, and linear in the length of the string: `strip` reads each character at most twice and sweeps
+  the buffer once.
 - Its output always passes the P-11 check.
 - A string with no markup opener and no `&` is its own text form. Whitespace is never touched: the text form removes
   markup and decodes references, nothing else. A control character that a reference produces is kept, as HTML keeps
@@ -141,17 +164,19 @@ which HTML keeps. The vectors include those cases, so the difference fails a tes
   The target survives only in `raw`, which is one reason `raw` is required and authoritative.
 - **Boundaries between blocks.** A removed tag leaves nothing, so `End of note.</div><div>Next note.` gives
   `End of note.Next note.` (open question 1).
+- **Text after a `>` inside a quoted attribute value.** Markup ends at its first `>`, so in `<a title="x>y">z` the
+  text form keeps `y">z`, where HTML would show only `z`. The leftover is text and passes the P-11 check.
 
 ## 5. Vectors
 
 `provenance-source-markup-2026-10-26.vectors.json` holds:
 
-- `textForm`: 37 pairs of a source string and its text form. Each covers one step or one edge of decoding, and
+- `textForm`: 43 pairs of a source string and its text form. Each covers one step or one edge of decoding, and
   each has a `shows` note saying what it tests.
 - `check`: 14 interpretation strings with the verdict `text` or `markup`.
 - `interpretationTextPattern`: the P-11 pattern from section 3.
 
-Every `<`, `>` and `&` in the file is written as a JSON escape (`<`, `>`, `&`), so the file holds no
+Every `<`, `>` and `&` in the file is written as a JSON escape (`\u003c`, `\u003e`, `\u0026`), so the file holds no
 literal markup. Decode the JSON to get the strings.
 
 `npm run conformance` (section 10) checks that:
@@ -161,6 +186,10 @@ literal markup. Decode the JSON to get the strings.
 - every check vector holds, and the schema pattern agrees with the check on every vector;
 - over 20,000 generated markup-shaped strings, every text form passes the check, a string with no markup and no
   reference is its own text form, and the pattern agrees with the check.
+- the text form takes linear time: six input shapes that a repeated pass, a rescan or a search from each `<` would
+  make quadratic (nested tags, unclosed tags, a run of `<`, unterminated comments with and without tags inside, and
+  nested escaped tags), each of 100,000 to 700,000 characters, must each finish within 1.5 seconds. Linear work takes
+  tens of milliseconds there.
 
 ## 6. Open questions
 
