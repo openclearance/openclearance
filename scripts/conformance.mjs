@@ -12,6 +12,8 @@
 //      context checks, the reference cross-field consistency checks (the authority
 //      gate, the designation and evidence input bans, evidence-pointer resolution,
 //      the protected-name guard), and the fixture vectors for each.
+//   10. Provenance source markup (proposal): the text form of an HTML source
+//      string and the interpretation-string check, against their vectors.
 
 import { readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -20,6 +22,7 @@ import { dirname, join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import jsonld from "jsonld";
+import { decodeHTML } from "entities";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -879,6 +882,230 @@ for (const [rel, expect] of Object.entries(V02_VECTORS)) {
     } else {
       fail(`${rel} must claim 'registered' with authorisedUserRef and evidence supporting the producer claim`);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 10. Provenance source markup (proposal, docs/proposals/
+//     provenance-source-markup-2026-10-26.md).
+//
+//     A provenance source string is carried as published, markup included; an
+//     interpretation string is text. Checked here:
+//      - the text form of an HTML source string: comments and tags removed in
+//        one left-to-right read, character references decoded once as HTML
+//        decodes them in text, then comments and tags removed again;
+//      - the interpretation-string check (P-11): no '<' followed by an ASCII
+//        letter, '/', '!' or '?';
+//      - that the text form takes time linear in the length of its input;
+//      - that every text form passes that check, over the vectors and over a
+//        generated set of markup-shaped strings;
+//      - that the vectors file carries no literal '<', '>' or '&'.
+//     The proposal is not yet published, so its vectors live beside it in docs/.
+// ---------------------------------------------------------------------------
+console.log("");
+console.log("Provenance source markup (proposal)");
+
+// '<' followed by one of these opens markup when the HTML tokenizer reads it.
+const isOpenerChar = (c) =>
+  (c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || c === "/" || c === "!" || c === "?";
+
+const opensMarkup = (s, i) => s[i] === "<" && i + 1 < s.length && isOpenerChar(s[i + 1]);
+
+// The same tests on UTF-16 code units. Every character the rules look at is
+// ASCII, so working on code units never splits a surrogate pair.
+const LT = 0x3c, GT = 0x3e, BANG = 0x21, DASH = 0x2d;
+const isOpenerUnit = (u) =>
+  (u >= 0x41 && u <= 0x5a) || (u >= 0x61 && u <= 0x7a) || u === 0x2f || u === BANG || u === 0x3f;
+
+// One left-to-right read into an output buffer. Markup is removed from the end of
+// the buffer as soon as it is complete, so markup that a removal forms is read
+// as it forms, and each character is read at most twice.
+const stripMarkup = (s) => {
+  const out = new Uint16Array(s.length);
+  let n = 0;
+  let open = -1;
+  let comments = true;
+  // Markup open at out[open] is a comment once it reads '<!--'.
+  const isComment = () =>
+    n - open >= 4 && out[open + 1] === BANG && out[open + 2] === DASH && out[open + 3] === DASH;
+  // A comment ends at the '>' just read when HTML ends it there: '<!-->' and
+  // '<!--->', or a '>' after '--' or '--!' that follows the opening '<!--'.
+  const commentEnds = () => {
+    const j = n - 1 - open;
+    return j === 4
+      || (j === 5 && out[open + 4] === DASH)
+      || (j >= 6 && out[n - 3] === DASH && out[n - 2] === DASH)
+      || (j >= 7 && out[n - 4] === DASH && out[n - 3] === DASH && out[n - 2] === BANG);
+  };
+  const read = (units, from, to) => {
+    for (let i = from; i < to; i += 1) {
+      const u = units[i];
+      out[n] = u;
+      n += 1;
+      if (open < 0) {
+        if (n >= 2 && out[n - 2] === LT && isOpenerUnit(u)) open = n - 2;
+      } else if (u === GT && (!(comments && isComment()) || commentEnds())) {
+        n = open;
+        open = -1;
+      }
+    }
+  };
+  const units = new Uint16Array(s.length);
+  for (let i = 0; i < s.length; i += 1) units[i] = s.charCodeAt(i);
+  read(units, 0, units.length);
+  // A comment that never ends is read again as markup that ends at its first '>'.
+  // No comment opening after it can end either, so comments stay off.
+  if (open >= 0 && comments && isComment()) {
+    const rest = out.slice(open, n);
+    n = open;
+    open = -1;
+    comments = false;
+    read(rest, 0, rest.length);
+  }
+  let units2 = out.subarray(0, n);
+  if (open >= 0) {
+    // Unclosed markup loses its '<'. Then, from the end back, each '<' whose next
+    // kept character opens markup is dropped, which ends any chain a drop forms.
+    const kept = new Uint16Array(n);
+    let k = n;
+    for (let i = n - 1; i >= 0; i -= 1) {
+      if (i === open) continue;
+      if (out[i] === LT && k < n && isOpenerUnit(kept[k])) continue;
+      k -= 1;
+      kept[k] = out[i];
+    }
+    units2 = kept.subarray(k);
+  }
+  let text = "";
+  for (let i = 0; i < units2.length; i += 8192) {
+    text += String.fromCharCode.apply(null, units2.subarray(i, i + 8192));
+  }
+  return text;
+};
+
+const textForm = (s) => stripMarkup(decodeHTML(stripMarkup(s)));
+
+const isText = (s) => {
+  for (let i = 0; i < s.length; i += 1) if (opensMarkup(s, i)) return false;
+  return true;
+};
+
+{
+  let patternCheck = null;
+  const rel = "docs/proposals/provenance-source-markup-2026-10-26.vectors.json";
+  const loaded = readJson(join(root, rel));
+  if (loaded) {
+    const { text, json: vectors } = loaded;
+    if (/[<>&]/.test(text)) {
+      fail(`${rel} holds a literal '<', '>' or '&'; write each as a JSON escape`);
+    } else {
+      pass(`${rel} holds no literal markup characters`);
+    }
+
+    const ids = [...vectors.textForm, ...vectors.check].map((v) => v.id);
+    if (new Set(ids).size === ids.length) {
+      pass(`${rel} vector ids are unique (${ids.length})`);
+    } else {
+      fail(`${rel} has a repeated vector id`);
+    }
+
+    for (const v of vectors.textForm) {
+      const got = textForm(v.source);
+      if (got !== v.text) {
+        fail(`textForm ${v.id}: got ${JSON.stringify(got)}, expected ${JSON.stringify(v.text)}`);
+      } else if (!isText(v.text)) {
+        fail(`textForm ${v.id}: the expected text fails the interpretation-string check`);
+      } else {
+        pass(`textForm ${v.id}`);
+      }
+    }
+
+    for (const v of vectors.check) {
+      const got = isText(v.value) ? "text" : "markup";
+      if (got === v.verdict) {
+        pass(`check ${v.id} is ${v.verdict}`);
+      } else {
+        fail(`check ${v.id}: got ${got}, expected ${v.verdict}`);
+      }
+    }
+
+    // The same check as a schema pattern, so a schema validator enforces it.
+    const matchesPattern = ajv.compile({ type: "string", pattern: vectors.interpretationTextPattern });
+    const disagree = [...vectors.check.map((v) => v.value), ...vectors.textForm.map((v) => v.text)]
+      .filter((s) => matchesPattern(s) !== isText(s));
+    if (disagree.length === 0) {
+      pass("interpretationTextPattern agrees with the interpretation-string check on every vector");
+    } else {
+      fail(`interpretationTextPattern disagrees with the check on ${JSON.stringify(disagree[0])}`);
+    }
+    patternCheck = matchesPattern;
+  }
+
+  // Generated strings: every text form passes the check, and a string with no
+  // markup opener and no '&' is its own text form. A fixed seed keeps the run
+  // reproducible.
+  const pieces = ["<", "<<", ">", "/","!", "?", "-", "--", "<!--", "-->", "--!>", "a", "B", "1", " ", "=",
+    "&", ";", "lt;", "gt;", "amp;", "#60;", "#x3C;", "é", "<b>", "</div>"];
+  let seed = 0x2545f491;
+  const nextInt = (n) => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return seed % n;
+  };
+  let notText = null;
+  let changedPlain = null;
+  let patternDisagrees = null;
+  for (let k = 0; k < 20000 && !notText && !changedPlain && !patternDisagrees; k += 1) {
+    let s = "";
+    const len = 1 + nextInt(12);
+    for (let j = 0; j < len; j += 1) s += pieces[nextInt(pieces.length)];
+    if (!isText(textForm(s))) notText = s;
+    if (isText(s) && !s.includes("&") && textForm(s) !== s) changedPlain = s;
+    if (patternCheck && patternCheck(s) !== isText(s)) patternDisagrees = s;
+  }
+  if (notText) {
+    fail(`text form of ${JSON.stringify(notText)} fails the interpretation-string check`);
+  } else {
+    pass("every text form of 20000 generated strings passes the interpretation-string check");
+  }
+  if (changedPlain) {
+    fail(`text form changed ${JSON.stringify(changedPlain)}, which holds no markup and no reference`);
+  } else {
+    pass("generated strings with no markup and no reference are their own text form");
+  }
+  // The text form is linear. A ratio of two timings is too noisy to gate on, so
+  // each shape gets a budget instead: at these sizes linear work takes tens of
+  // milliseconds, and any quadratic step (a repeated pass, a rescan, a search
+  // from each '<') takes seconds to minutes. The shapes are the ones such a
+  // step would make slow.
+  const SHAPE_REPEATS = 100000;
+  const BUDGET_MS = 1500;
+  const shapes = {
+    "nested tags": (n) => "<".repeat(n) + "a>".repeat(n),
+    "unclosed tags": (n) => "<a".repeat(n),
+    "a run of '<' before a letter": (n) => "<".repeat(n) + "a",
+    "unterminated comments": (n) => "<!--".repeat(n),
+    "unterminated comments holding tags": (n) => "<!-- <b".repeat(n),
+    "nested escaped tags": (n) => "&lt;".repeat(n / 4) + "a&gt;".repeat(n / 4),
+  };
+  textForm(shapes["nested tags"](1000));
+  for (const [name, make] of Object.entries(shapes)) {
+    const input = make(SHAPE_REPEATS);
+    const start = process.hrtime.bigint();
+    textForm(input);
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    const what = `the text form of ${name} (${input.length} characters) took ${ms.toFixed(0)} ms`;
+    if (ms <= BUDGET_MS) {
+      pass(`${what}, within ${BUDGET_MS} ms`);
+    } else {
+      fail(`${what}, over the ${BUDGET_MS} ms budget for linear work`);
+    }
+  }
+  if (!patternCheck) {
+    fail("interpretationTextPattern was not compiled, so generated strings were not checked against it");
+  } else if (patternDisagrees) {
+    fail(`interpretationTextPattern disagrees with the check on ${JSON.stringify(patternDisagrees)}`);
+  } else {
+    pass("interpretationTextPattern agrees with the check on 20000 generated strings");
   }
 }
 
