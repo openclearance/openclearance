@@ -10,7 +10,7 @@ import Base from '../layouts/Base.astro';
 
 const STATUS = {
   live: { label: 'Live', note: 'Shipped and verifiable today.' },
-  design: { label: 'In design', note: 'Specified, not yet shipped.' },
+  design: { label: 'In design', note: 'Designed in detail and written up, not yet published or shipped.' },
   planned: { label: 'Planned', note: 'Direction, not yet specified in detail.' },
 };
 
@@ -52,16 +52,16 @@ const tracks = [
       'Finer-grained, declarative controls that sit alongside the base verdicts. Declarative, not enforcing: good-faith tools and platforms respect them; the standard does not claim to stop bad actors. Granular controls can only narrow, never widen, what the base licence already allows.',
     items: [
       {
-        status: 'design',
+        status: 'planned',
         label: 'Per-platform use',
         detail:
-          'Controls scoping reuse to named channels (for example web, a specific social network, press, print), with a small core set and an extension mechanism rather than an enumerated list. A v0.2 axis.',
+          'Controls scoping reuse to named channels (for example web, a specific social network, press, print), with a small core set and an extension mechanism rather than an enumerated list.',
       },
       {
-        status: 'design',
+        status: 'planned',
         label: 'AI-use controls',
         detail:
-          'Controls over training, extraction, and generation (allow, deny, or conditions), aligned with existing reservation signals such as TDM reservation and C2PA training-and-data-mining assertions. A v0.2 axis.',
+          'Controls over training, extraction, and generation (allow, deny, or conditions), aligned with existing reservation signals such as TDM reservation and C2PA training-and-data-mining assertions.',
       },
     ],
   },
@@ -80,7 +80,7 @@ const tracks = [
         status: 'design',
         label: 'Tier-1, delegated attestation',
         detail:
-          'A delegated attestor signs the manifest on behalf of the named, keyless actor, under a did:web identity, carried as a C2PA assertion over the same byte-exact payload. Verification is fail-closed: a tampered or actor-mismatched signature is rejected, never downgraded to an unsigned record. VerificationState ATTESTED_DELEGATE. Open Museum has started signing records for a first set of works under its own did:web identity, naming the institution whose determination it carries. That signed record is not yet published or carried as a C2PA manifest, so today only Open Museum can check its signature; publishing the record and its schema comes next.',
+          'A delegated attestor signs the manifest on behalf of the named, keyless actor, under a did:web identity, over the same byte-exact payload. How that attestation should carry its signing credential, including whether it is carried as a C2PA assertion at all, is under review. Verification is fail-closed: a tampered or actor-mismatched signature is rejected, never downgraded to an unsigned record. VerificationState ATTESTED_DELEGATE. Open Museum has started signing records for a first set of works under its own did:web identity, naming the institution whose determination it carries. That signed record is not yet published or carried as a C2PA manifest, so today only Open Museum can check its signature; publishing the record and its schema comes next.',
       },
       {
         status: 'planned',
@@ -96,10 +96,10 @@ const tracks = [
       'Who may sign, how trust is earned, and how a bad signature stops counting. The model governs identity, not truth: openclearance binds a claim to an accountable identity and records conflicting claims, but never adjudicates which is correct.',
     items: [
       {
-        status: 'design',
+        status: 'planned',
         label: 'Accountable signer identities',
         detail:
-          'Every weighted claim binds to an accountable identity: domain-validated (did:web) or identity-verified (KYC). Restriction and monetisation require a verified identity; the open tier carries only zero-stakes permissive signals.',
+          'The direction is that every weighted claim binds to an accountable identity, either domain-validated (did:web) or identity-verified, with restriction and monetisation requiring a verified identity and the open tier carrying only zero-stakes permissive signals. None of that is specified yet: v0.1 records which actor determined a clearance, and does not grade or verify that actor.',
       },
       {
         status: 'planned',
@@ -121,7 +121,7 @@ const tracks = [
       'How a manifest travels with a work and how a consumer checks it. The honest bar is recovery for registered works, not unstrippable prevention.',
     items: [
       {
-        status: 'design',
+        status: 'planned',
         label: 'Embedded C2PA credentials',
         detail:
           'For works whose bytes are delivered by the producer, the manifest travels inside the image as a C2PA Content Credential (hard binding). Not yet shipped: Open Museum holds its signed records on its own servers today, not inside the image.',
