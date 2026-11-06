@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclearance.org/v0.2/tier1-envelope.schema.json",
+  "title": "Clearance Manifest Tier-1 delegated-attestor envelope v0.2",
+  "description": "Tier-1 envelope: a byte-exact v0.1 payload carried inside a C2PA image manifest signed by a delegated attestor on behalf of the named (keyless) actor. The payload is UNCHANGED from Tier-0 (v0.1 spec): the integrity hash is the same byte-exact SHA-256 of the exact UTF-8 bytes of the `payload` string. Reaching VerificationState=ATTESTED_DELEGATE requires the C2PA claim signature to validate, the signer to resolve to attestation.attestor.did, attestor.did to differ from attestation.actor (a genuine delegate, not the actor self-signing), the bound-asset hash to match, AND attestation.actor to equal the wrapped payload's verification.determinedBy.actor. A tier:1 envelope whose signature, binding, or actor-binding fails is REJECTED (fail-closed), never silently treated as Tier-0. This is a v0.2 artifact; frozen v0.1 is untouched. The wrapped payload conforms to https://openclearance.org/v0.1/clearance-manifest.schema.json.",
+  "type": "object",
+  "required": ["tier", "payloadType", "payload", "integrity", "attestation"],
+  "additionalProperties": false,
+  "properties": {
+    "tier": {
+      "const": 1,
+      "description": "Tier 1 = delegated attestation. Tier 0 uses tier0-envelope.schema.json; Tier 2 (actor self-signs via its own domain identity) is a future envelope."
+    },
+    "payloadType": {
+      "const": "application/clearance-manifest+json",
+      "description": "Media type of the bytes in `payload`."
+    },
+    "payload": {
+      "type": "string",
+      "minLength": 1,
+      "description": "EXACT UTF-8 JSON serialization of the v0.1 manifest payload, byte-identical to the Tier-0 form. Hash this verbatim; compare; only THEN parse. The parsed object conforms to clearance-manifest.schema.json v0.1."
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["alg", "hash"],
+      "additionalProperties": false,
+      "description": "Inner integrity over the exact bytes of `payload`. Tier-stable: identical to the Tier-0 value because the payload is unchanged across tiers. This is the bundle anchor a sibling commerce assertion references.",
+      "properties": {
+        "alg": { "const": "sha-256" },
+        "hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Lowercase hex SHA-256 of the UTF-8 bytes of the `payload` string."
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "required": ["attestor", "actor", "boundAsset", "c2pa"],
+      "additionalProperties": false,
+      "description": "The delegated attestation. Attestor (signer) and actor (determiner) are deliberately distinct: the actor MADE the determination; the attestor cryptographically vouches for its FAITHFUL CARRIAGE, never for its legal truth.",
+      "properties": {
+        "attestor": {
+          "type": "object",
+          "required": ["did", "role"],
+          "additionalProperties": false,
+          "description": "Who SIGNED — the delegated attestor (e.g. Open Museum). NOT the actor.",
+          "properties": {
+            "did": {
+              "type": "string",
+              "pattern": "^did:web:.+",
+              "description": "Attestor DID, e.g. did:web:open-museum.art. The signing public key resolves via the DID document at /.well-known/did.json."
+            },
+            "role": { "const": "delegated-attestor" }
+          }
+        },
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Who MADE the determination. A verifier MUST reject the envelope unless this equals the wrapped payload's verification.determinedBy.actor (e.g. 'museum:met'). This is the binding the whole Tier-1 delegation rests on; it is a cross-field rule a verifier enforces, not a schema constraint."
+        },
+        "boundAsset": {
+          "type": "object",
+          "required": ["assetType", "alg", "hash", "binding"],
+          "additionalProperties": false,
+          "description": "The artwork image asset the C2PA manifest hard-binds to. The producer's delivered/print-ready rendition — the bytes the producer controls.",
+          "properties": {
+            "assetType": { "const": "image" },
+            "alg": { "const": "sha-256" },
+            "hash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "SHA-256 of the delivered image rendition bytes."
+            },
+            "binding": {
+              "const": "c2pa-hard-binding",
+              "description": "C2PA c2pa.hash.data / c2pa.hash.boxes hard binding to the asset."
+            },
+            "locator": {
+              "type": "string",
+              "format": "uri",
+              "description": "OPTIONAL: where the credentialed image is retrievable."
+            }
+          }
+        },
+        "c2pa": {
+          "type": "object",
+          "required": ["claimGenerator", "clearanceAssertionLabel", "manifest", "signature", "identityBinding"],
+          "additionalProperties": false,
+          "properties": {
+            "claimGenerator": {
+              "type": "string",
+              "minLength": 1,
+              "description": "C2PA claim_generator, e.g. 'open-museum.art'."
+            },
+            "clearanceAssertionLabel": {
+              "const": "org.openclearance.clearance-manifest",
+              "description": "The C2PA assertion whose data is the EXACT bytes of this envelope's `payload`. Its hash equals integrity.hash."
+            },
+            "manifest": {
+              "type": "object",
+              "required": ["format"],
+              "additionalProperties": false,
+              "description": "How to obtain the C2PA manifest store (claim + assertions + COSE_Sign1 signature). Exactly one of `value` (detached) or `url` (embedded) — enforced by oneOf.",
+              "properties": {
+                "format": {
+                  "enum": ["embedded", "detached"],
+                  "description": "embedded = the manifest store is in the delivered image at `url`; detached = the manifest store bytes are carried in `value`."
+                },
+                "value": {
+                  "type": "string",
+                  "contentEncoding": "base64",
+                  "description": "Detached C2PA manifest store bytes (format=detached)."
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "Where to fetch the credentialed asset / embedded manifest store (format=embedded)."
+                }
+              },
+              "oneOf": [
+                {
+                  "description": "detached → value only, never url",
+                  "properties": { "format": { "const": "detached" } },
+                  "required": ["format", "value"],
+                  "not": { "required": ["url"] }
+                },
+                {
+                  "description": "embedded → url only, never value",
+                  "properties": { "format": { "const": "embedded" } },
+                  "required": ["format", "url"],
+                  "not": { "required": ["value"] }
+                }
+              ]
+            },
+            "signature": {
+              "type": "object",
+              "required": ["alg"],
+              "additionalProperties": false,
+              "description": "The C2PA claim signature. Single deliberate algorithm in v0.2; an algorithm change would be a schema revision (no in-Tier-1 algorithm agility).",
+              "properties": {
+                "alg": {
+                  "const": "ed25519",
+                  "description": "COSE_Sign1 over the C2PA claim, EdDSA/Ed25519. The signer signs the lib-provided claim bytes VERBATIM — no re-canonicalization (mirrors v0.1 byte-exact integrity)."
+                }
+              }
+            },
+            "identityBinding": {
+              "type": "object",
+              "required": ["method"],
+              "additionalProperties": false,
+              "properties": {
+                "method": {
+                  "const": "cawg-identity-assertion",
+                  "description": "A CAWG identity assertion binds the COSE signer to attestor.did; the DID document at /.well-known/did.json is the public-key source. (X.509 + C2PA trust list is a heavier Tier-2/eIDAS-adjacent alternative, deferred.)"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
